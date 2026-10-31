@@ -27,7 +27,11 @@ godot --path . -- --unlock-all
 
 | Control | Action |
 | --- | --- |
-| WASD / arrows | Move |
+| WASD / arrows | Survey: move |
+| Mouse / arrows | Deep Orbit: steer yaw and pitch |
+| W / S | Deep Orbit: thrust / brake, then slow reverse |
+| A / D | Deep Orbit: strafe left / right |
+| I | Deep Orbit: toggle invert-Y; saved |
 | Space | Dash; shatter rocks/sentries and crack Leviathan vents |
 | E | Ion pulse: scatter rocks, stun sentries, attract cores, deflect meteors, invert the well |
 | Esc / P | Pause / resume |
@@ -45,7 +49,9 @@ godot --path . -- --unlock-all
 
 Every hub action also has a mouse button. Enter launches from every hub section.
 Switching away automatically pauses a running expedition. Reduced motion removes
-camera follow/shake and shield flicker, reduces particles, and uses fading waves.
+camera lag, FOV kicks/shake and shield flicker, reduces particles, and uses fading waves.
+Deep Orbit captures the mouse during active flight and releases it on pause, focus
+loss, upgrade docks, results and the Roost. Arrow steering supports keyboard-only play.
 
 ## Routes and hazards
 
@@ -64,12 +70,13 @@ Orbit unlocks for 250 Scrap or free on the first Survey victory.
 
 Cores stay aboard until you spend **0.7 seconds** in the safe dock. Partial
 deliveries are allowed. Cargo slightly reduces cruising speed. The navigation
-chevron points toward a core or recommends heading home with a larger haul.
+chevron (Survey) or waypoint marker (Deep Orbit) points toward a core or recommends
+heading home with a larger haul. Deep Orbit uses a 10m spherical banking zone.
 Rocks and sentries keep clear of the dock. Every sector transition repairs 1 hull.
 
 Link pickups within **4.5 seconds** to grow the multiplier up to **x4**. Getting
 hit or letting the chain expire resets it. Banked cores and carried cargo survive
-hits. Dash immunity lasts 0.18s; pulse grants a 0.35s shield and stuns sentries
+hits. Dash immunity lasts 0.18s in Survey and 0.25s in Deep Orbit; pulse grants a 0.35s shield and stuns sentries
 for four seconds.
 
 Spires block the ship without damaging it and bounce rocks. They cannot be
@@ -77,7 +84,7 @@ broken by a dash. The well pulls the pilot and loose cores; touching its horizon
 deals 1 damage and flings the ship out. Consumed cores respawn elsewhere. An ion
 pulse reverses the pull for **1.5 seconds**.
 
-The Leviathan slowly patrols the upper field. Dash into each glowing vent for
+The 90m Leviathan slowly patrols a 3D loop above the dock. Dash into each glowing vent for
 **400 points and 3 cores**. Hull contact hurts unless dashing; dashes bounce.
 It sheds a core every 8s and warns an amber beam lane every 6s: **1.4s warning,
 0.6s damaging beam**. Crack all three vents for **LEVIATHAN SILENCED**, 1500 points
@@ -141,19 +148,52 @@ Deep Orbit ranks: S 18,000 / A 14,000 / B 10,000. Lower scores rank C.
 
 `user://starling.cfg` stores Scrap, Workshop ownership, route/frame selection,
 per-route best score/rank/runs/victories, and sound/motion/Survey-view settings.
-Legacy saves without expansion keys load with safe defaults and retain records.
+The invert-Y preference is saved alongside these settings. Legacy saves without
+expansion keys load with safe defaults and retain records (normal Y by default).
 `--unlock-all` uses `user://starling-preview-<process id>.cfg` and never writes
 the real profile.
 
-## 3D presentation and project layout
+## Deep Orbit 3D flight and Survey presentation
 
-Simulation remains **2D Area2D actors in 1280 × 800 coordinates**. A separate
-SubViewport mirrors actors onto a 3D XZ plane, with a tilted perspective camera,
-subtle pilot follow, shadowed directional lighting, panorama sky and glow using
-the **GL Compatibility** renderer. The field remains fully visible. GLBs bank,
-bob, spin and tumble; the dock has a progress ring, and meteor/beam/sentry warnings
-are drawn in world space. Effects, vent targets and navigation project through
-the same camera. F3 only hides drawing; switching views never resets simulation.
+Deep Orbit runs **real CharacterBody3D / Area3D actors** in a spherical salvage
+volume of about 200m radius around a dock at the origin. The ship is about 4m long.
+Cruise speed is 38m/s, acceleration/braking is 100m/s², strafe is 24.7m/s, and slow
+reverse is 7.6m/s before frame/cargo modifiers. Dash travels at 110m/s for 0.25s
+(27.5m), with immunity and shattering; Ram adds 0.1s per level. Steering smooths
+at 12/s and reaches 1.65rad/s (95°/s); pitch clamps to ±75°. Visual bank auto-levels.
+The radius takes 5.3s to cross at cruise, and a full diameter 10.5s. A 180° turn
+requires about 1.9s; the cruise turn radius is about 23m. A 1.4s beam/meteor warning
+allows 53m of cruise travel, enough to clear an 8m-wide cylinder with strafe alone.
+
+The spring arm places the chase camera 12m behind and 3.4m above the ship. FOV
+moves from 72° to 77° at cruise and adds 9° during a dash. Reduced motion holds 72°,
+locks camera orientation to the pilot and disables shake. The distant Roost, broken
+orbital ring, wreck fragments and camera-local parallax dust establish depth;
+speed streaks lengthen during a dash. No floor constrains the flight volume.
+
+The scanner at bottom center flattens horizontal distance into an ellipse and
+uses vertical stalks for relative altitude. Gold is salvage, mint is the dock,
+grey is rock, red is a sentry/Leviathan and violet is the well. The three nearest
+cores and dock have directional indicators; the dock always includes metres.
+The recommended waypoint and nearest-core bracket guide collection. Sentry laser
+lines and translucent amber meteor/beam cylinders telegraph danger; threats behind
+the camera produce an amber warning ring. A red arc points toward incoming damage.
+Beyond 185m, a boundary warning and increasing inward force guide the ship home;
+210m is an emergency safety limit. Rocks bounce at the spherical boundary.
+
+Tractor range is 6.9m on Starling/Kestrel and 12.3m on Albatross, plus **10m per
+Tractor Array level**. Pulse radius is **32m + 12m per Ion Resonator level**. Wings
+orbit about **11m** out, with a vertical component and 3.8m collection reach.
+Foundry spires are 150m tall and about 12m wide, with real slide collisions. The
+well pulls within 110m, with a 12m horizon and a 1.5s pulse inversion when reached
+by the pulse sphere. The 20m region around the dock is safe from roaming hazards
+and beam damage. The rules object, scoring, drafts, clocks and Scrap are shared.
+
+Survey retains its **2D Area2D actors in 1280 × 800 coordinates**. F3 mirrors these
+onto a separate SubViewport's 3D XZ plane, with the original tilted camera and
+fully visible arena. F3 changes presentation only. The Roost shares this presenter;
+its viewport stops rendering while Deep Orbit is active. Both modes use the
+**GL Compatibility** renderer and optional GLBs with primitive fallbacks.
 
 | Path | Responsibility |
 | --- | --- |
@@ -164,7 +204,11 @@ the same camera. F3 only hides drawing; switching views never resets simulation.
 | `scripts/pilot.gd` | Movement, frame/card stats, abilities and damage |
 | `scripts/core.gd`, `debris.gd`, `drone.gd` | Core and original hazard actors |
 | `scripts/meteor_storm.gd` | Warned meteor lanes and deflection |
-| `scripts/spire.gd`, `gravity_well.gd`, `leviathan.gd` | Deep Orbit mechanics |
+| `scripts/flight3d/coordinator.gd` | True 3D sector spawning, banking, shared-rule integration |
+| `scripts/flight3d/pilot.gd`, `chase_camera.gd` | Metre-based free flight, spring arm, FOV, capture-aware steering |
+| `scripts/flight3d/core.gd`, `rock.gd`, `sentry.gd`, `lane.gd` | Real 3D pickup, collision, telegraph and damage actors |
+| `scripts/flight3d/spire.gd`, `well.gd`, `leviathan.gd`, `wing.gd` | Solid spires, spherical gravity, vent/beam boss, companion |
+| `scripts/flight3d/overlay.gd`, `visuals.gd`, `dressing.gd` | Scanner/indicators, reusable volumes, environment/dust/landmarks |
 | `scripts/salvage_wing.gd` | Orbiting companion collector |
 | `scripts/presenter.gd` | 3D mirrors, camera, light, Roost and telegraphs |
 | `scripts/model_assets.gd` | Optional GLB loading and primitive/existing-model fallback |
@@ -172,7 +216,8 @@ the same camera. F3 only hides drawing; switching views never resets simulation.
 | `scripts/arena.gd`, `effects.gd` | Original 2D field and bounded effects |
 | `scripts/hud.gd`, `screens.gd`, `ui_style.gd` | Flight HUD, hub, dock draft, pause and results |
 | `scripts/sound.gd` | Synthesized sounds, including vents, beams, inversion and purchases |
-| `tests/smoke_test.gd`, `preview_flag.gd` | Input/physics integration and isolated CLI verification |
+| `tests/smoke_test.gd`, `preview_flag.gd` | Survey/meta input/physics integration and isolated CLI verification |
+| `tests/flight3d_test.gd` | True 3D input/overlap route, capture, scanner, cards and native performance |
 
 Artwork is bundled under `assets/art/`; models under `assets/models/`. The asset
 helper checks `ResourceLoader.exists()` and falls back to an existing GLB or
@@ -187,20 +232,27 @@ regenerate the art; Blender is never needed to play.
 ```sh
 godot --headless --path . --editor --quit
 godot --headless --path . --script tests/smoke_test.gd
-# Same checks plus native screenshots:
+godot --headless --path . --script tests/flight3d_test.gd
+# Same checks plus native screenshots (3D also measures native frame time):
 godot --path . --script tests/smoke_test.gd
+godot --path . --script tests/flight3d_test.gd
 ```
 
-The suite uses real input events, overlaps and scene processing for the complete
-Survey and Deep Orbit expeditions. It checks meta payouts/purchases/save migration,
-the actual preview CLI flag in a child process, deterministic drafts, all frame
-stats and card effects, spire separation/rock bounces, well pull/horizon/inversion/
-core respawn, beam timing/damage, vents/SILENCED, model counts/positions, camera
-bounds, F3 persistence and Roost modules. It uses temporary profiles throughout.
+The Survey suite covers the complete original route and meta payouts, purchases,
+save migration, preview CLI isolation, deterministic drafts, frames, every card,
+F3 projection/camera behavior and Roost modules. The separate 3D suite covers real
+key/mouse events and body/area overlaps, steering/thrust/strafe/clamps/auto-level,
+boundary push, pickup chains/banking, dash shatter, pulse/sentry interactions,
+spire slides and rock bounces, well pull/horizon/respawn/inversion, meteor lanes,
+all Leviathan vents and beam timing/damage, SILENCED, full victory and Scrap,
+scanner contacts/indicators, capture transitions and reduced motion. Temporary
+profiles are used throughout. Headless checks verify capture intent because the
+dummy display has no OS cursor; native checks verify actual mouse mode and drawing.
 
-Native capture writes `/tmp/starling-v2-*.png`: Roost, Workshop, Survey 3D, each
-Deep Orbit sector, Leviathan beam and silenced states, Scrap result, plus original
-ability/dock/pause/victory/loss and smaller-window views.
+Native captures write `/tmp/starling-v2-*.png` for Survey/meta and
+`/tmp/starling-flight3d-*.png` for Shelf, Spires, Well, Leviathan, dash, close pass,
+beam from behind, radar and victory. The 3D native suite disables VSync for its
+300-frame measurement at 1280×800 and reports mean FPS and p95 frame time.
 
 For a manual native session with a separate profile:
 

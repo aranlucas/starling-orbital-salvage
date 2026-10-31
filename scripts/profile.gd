@@ -29,6 +29,7 @@ var runs := 0
 var muted := false
 var reduced_motion := false
 var view_3d := false
+var invert_y := false
 var scrap := 0
 var owned: Array[String] = []
 var route_records: Dictionary = {}
@@ -55,6 +56,7 @@ func load_profile() -> void:
 	muted = bool(file.get_value("settings", "muted", false))
 	reduced_motion = bool(file.get_value("settings", "reduced_motion", false))
 	view_3d = bool(file.get_value("settings", "view_3d", false))
+	invert_y = bool(file.get_value("settings", "invert_y", false))
 	scrap = maxi(0, int(file.get_value("workshop", "scrap", 0)))
 	owned.clear()
 	for id in file.get_value("workshop", "owned", []):
@@ -130,7 +132,7 @@ func save() -> void:
 	for key in ["best", "victories", "runs"]:
 		file.set_value("mission", key, get(key))
 	file.set_value("mission", "routes", route_records)
-	for key in ["muted", "reduced_motion", "view_3d"]:
+	for key in ["muted", "reduced_motion", "view_3d", "invert_y"]:
 		file.set_value("settings", key, get(key))
 	file.set_value("settings", "route", selected_route)
 	file.set_value("settings", "frame", selected_frame)

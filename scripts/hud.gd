@@ -22,6 +22,8 @@ var notice_panel: Panel
 var notice_label: Label
 var notice_left := 0.0
 var best_label: Label
+var movement_label: Label
+var pause_label: Label
 
 
 func _ready() -> void:
@@ -43,12 +45,12 @@ func _ready() -> void:
 	objective = UI.label(root, "", Vector2(43, 102), 11, UI.CYAN)
 	combo_label = UI.label(root, "LINK PICKUPS FOR A MULTIPLIER", Vector2(947, 95), 10, UI.MUTED)
 	chain_bar = UI.bar(root, Rect2(947, 117, 290, 3), UI.GOLD)
-	UI.label(root, "WASD / ARROWS   MOVE", Vector2(44, 757), 11, UI.MUTED)
+	movement_label = UI.label(root, "WASD / ARROWS   MOVE", Vector2(44, 757), 11, UI.MUTED)
 	dash_label = UI.label(root, "SPACE   DASH / SHATTER", Vector2(293, 749), 11, UI.CYAN)
 	dash_bar = UI.bar(root, Rect2(293, 776, 168, 4), UI.CYAN)
 	pulse_label = UI.label(root, "E   ION PULSE", Vector2(514, 749), 11, Color("b0a9ff"))
 	pulse_bar = UI.bar(root, Rect2(514, 776, 168, 4), Color("b0a9ff"))
-	UI.label(root, "P  PAUSE  /  F3  VIEW", Vector2(741, 757), 11, UI.MUTED)
+	pause_label = UI.label(root, "P  PAUSE  /  F3  VIEW", Vector2(741, 757), 11, UI.MUTED)
 	mute_label = UI.label(root, "M   SOUND ON", Vector2(934, 757), 11, UI.MUTED)
 	best_label = UI.label(root, "BEST  00000", Vector2(1120, 757), 10, UI.MUTED)
 	notice_panel = Panel.new()
@@ -64,8 +66,10 @@ func _ready() -> void:
 	add_child(screens)
 
 
-func render(run: Expedition, pilot: Pilot, seconds: float, profile: FlightProfile, delta: float) -> void:
+func render(run: Expedition, pilot, seconds: float, profile: FlightProfile, delta: float) -> void:
 	flight_ui.visible = not screens.visible
+	movement_label.text = "W/S THRUST  A/D STRAFE" if run.route == "deep" else "WASD / ARROWS   MOVE"
+	pause_label.text = "P PAUSE / I INVERT Y" if run.route == "deep" else "P PAUSE / F3 VIEW"
 	var sector := run.sector()
 	core_label.text = "%02d / %02d" % [run.banked, sector.quota]
 	cargo_label.text = "CARGO ABOARD  %02d" % run.cargo

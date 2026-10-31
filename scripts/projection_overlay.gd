@@ -44,17 +44,6 @@ func _draw() -> void:
 			var tip := start + direction * 36
 			draw_polyline(PackedVector2Array([tip - direction * 7 + direction.orthogonal() * 4, tip, tip - direction * 7 - direction.orthogonal() * 4]), Color("f3c77b"), 2, true)
 	for actor in presenter.sim.get_children():
-		if actor is GravityWell:
-			var color := Color("78f5dd") if actor.inversion > 0 else Color("a7a0ff")
-			draw_arc(presenter.project(actor.position), 27, 0, TAU, 64, color, 2, true)
-			draw_string(ThemeDB.fallback_font, presenter.project(actor.position) + Vector2(-45, 48), "INVERTED" if actor.inversion > 0 else "EVENT HORIZON", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, color)
-		elif actor is Leviathan:
-			for i in 3:
-				var point := presenter.project(actor.vent_position(i), 1.0)
-				draw_circle(point, 13, Color("10202d"))
-				draw_arc(point, 13, 0, TAU, 32, Color("78f5dd") if actor.cracked[i] else Color("ffaaa0"), 3, true)
-				draw_string(ThemeDB.fallback_font, point + Vector2(-4, 5), "✓" if actor.cracked[i] else str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
-		if actor is Leviathan or actor is MeteorStorm:
-			if actor.warning > 0:
-				var point := presenter.project(actor.lane_start.lerp(actor.lane_end, 0.14))
-				draw_string(ThemeDB.fallback_font, point + Vector2(-20, -18), "!  BEAM LANE" if actor is Leviathan else "!  METEOR LANE", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("ffc780"))
+		if actor is MeteorStorm and actor.warning > 0:
+			var point := presenter.project(actor.lane_start.lerp(actor.lane_end, 0.14))
+			draw_string(ThemeDB.fallback_font, point + Vector2(-20, -18), "!  METEOR LANE", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("ffc780"))

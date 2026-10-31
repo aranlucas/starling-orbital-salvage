@@ -29,3 +29,29 @@ static func material(color: Color, glow: bool = false) -> StandardMaterial3D:
 		mat.emission = color
 		mat.emission_energy_multiplier = 2
 	return mat
+
+static func sky_texture() -> Texture2D:
+	var path := "res://assets/art/deep_orbit_sky.png"
+	return load(path) as Texture2D if ResourceLoader.exists(path) else null
+
+static func bounds(root: Node3D) -> AABB:
+	# GLTF empties can sit at (0,0,0) while their child meshes carry baked positions.
+	var result := AABB()
+	var first := true
+	var meshes := root.find_children("*", "MeshInstance3D", true, false)
+	if root is MeshInstance3D:
+		meshes.append(root)
+	for mesh in meshes:
+		var box: AABB = (root.global_transform.affine_inverse() * mesh.global_transform) * mesh.get_aabb()
+		if first:
+			result = box
+			first = false
+		else:
+			result = result.merge(box)
+	return result
+
+static func part_position(root: Node3D, name: String, fallback: Vector3) -> Vector3:
+	var node := part(root, name)
+	if node == null:
+		return fallback
+	return root.to_local(node.to_global(bounds(node).get_center()))

@@ -60,10 +60,10 @@ func _ready() -> void:
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
-	var sky_path := "res://assets/art/deep_orbit_sky.png"
-	if ResourceLoader.exists(sky_path):
+	var sky_texture := ModelAssets.sky_texture()
+	if sky_texture:
 		var panorama := PanoramaSkyMaterial.new()
-		panorama.panorama = load(sky_path)
+		panorama.panorama = sky_texture
 		sky.sky_material = panorama
 	else:
 		var procedural := ProceduralSkyMaterial.new()
@@ -161,15 +161,6 @@ func _actor_model(actor: Node) -> Node3D:
 	elif actor is SentryDrone:
 		id = "drone"
 		factor = 0.8
-	elif actor is FoundrySpire:
-		id = "foundry_spire"
-		factor = 0.75
-	elif actor is GravityWell:
-		id = "gravity_well"
-		factor = 0.8
-	elif actor is Leviathan:
-		id = "leviathan"
-		factor = 0.5
 	elif actor is SalvageWing:
 		id = "salvage_wing"
 		factor = 0.8
@@ -180,9 +171,6 @@ func _actor_model(actor: Node) -> Node3D:
 	var model := ModelAssets.model(id, "ship" if actor is Pilot else "asteroid")
 	model.name = "Model"
 	model.scale = Vector3.ONE * factor
-	# The long ore hauler crosses the upper band horizontally.
-	if actor is Leviathan:
-		model.rotation.y = PI / 2
 	wrapper.add_child(model)
 	return wrapper
 
@@ -218,15 +206,7 @@ func sync() -> void:
 		elif actor is MeteorStorm:
 			mirror.visible = actor.flight > 0
 			mirror.position = map_position(actor.meteor_position, 0.6)
-		elif actor is GravityWell:
-			var ring := ModelAssets.part(mirror, "Ring")
-			if ring:
-				ring.rotation.y = elapsed * (-1 if actor.inversion > 0 else 1)
-		elif actor is Leviathan:
-			for i in 3:
-				var vent := ModelAssets.part(mirror, "Vent_%d" % i)
-				if vent:
-					vent.visible = not actor.cracked[i]
+
 	for key in mirrors.keys():
 		if not live.has(key):
 			mirrors[key].queue_free()
@@ -287,9 +267,9 @@ func _update_telegraphs() -> void:
 	for child in telegraphs.get_children():
 		child.free()
 	for actor in sim.get_children():
-		if actor is MeteorStorm or actor is Leviathan:
+		if actor is MeteorStorm:
 			var warning: float = actor.warning
-			var danger: float = actor.flight if actor is MeteorStorm else actor.beam
+			var danger: float = actor.flight
 			if warning > 0 or danger > 0:
 				var color := Color("ffc780") if warning > 0 else Color("ff796e")
 				var a := map_position(actor.lane_start, 0.13)

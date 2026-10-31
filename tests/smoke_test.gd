@@ -230,7 +230,7 @@ func _test_rules() -> void:
 
 func _freeze_hazards() -> void:
 	for actor in game.world.get_children():
-		if actor is Debris or actor is SentryDrone or actor is MeteorStorm or actor is Leviathan:
+		if actor is Debris or actor is SentryDrone or actor is MeteorStorm:
 			actor.set_physics_process(false)
 
 
@@ -486,129 +486,7 @@ func _test_expansion() -> void:
 	_check(game.presenter.camera.position == camera_position, "Reduced motion disables camera follow")
 	await _key(KEY_F3)
 	_check(not game.presenter.visible and game.stage.visible, "F3 returns to the original Survey presentation")
-	game.profile.selected_route = "deep"
-	game.start_mission()
-	_freeze_hazards()
-	await process_frame
-	_check(game.presenter.visible and game.run.sectors().size() == 4 and _cores().size() == 9, "Deep Orbit starts The Shelf in forced 3D")
-	await _key(KEY_F3)
-	_check(game.presenter.visible, "Deep Orbit remains 3D after F3")
-	await _capture("deep-shelf")
-	await _collect_all()
-	await _dock()
-	game.choose_upgrade(game.run.upgrade_offers()[0])
-	_freeze_hazards()
-	var spires: Array = game.world.get_children().filter(func(n: Node) -> bool: return n is FoundrySpire)
-	_check(spires.size() == 5 and game.run.sector_index == 1, "Foundry Spires introduces five solid towers")
-	var spire: FoundrySpire = spires[0]
-	var hp: int = game.pilot.health
-	game.pilot.position = spire.position + Vector2(40, 0)
-	Input.action_press("move_left")
-	await create_timer(0.18).timeout
-	Input.action_release("move_left")
-	_check(game.pilot.position.distance_to(spire.position) >= spire.radius + game.pilot.hit_radius - 0.1 and game.pilot.health == hp, "Spire collision blocks and slides the pilot without damage")
-	game.pilot.dash_remaining = 0.15
-	game.pilot.position = spire.position
-	await _physics_steps()
-	_check(is_instance_valid(spire) and game.pilot.position.distance_to(spire.position) >= 46, "Dashing cannot destroy or enter a spire")
-	var rock: Debris = _actors("Debris")[0]
-	rock.position = spire.position + Vector2(40, 0)
-	rock.velocity = Vector2(-60, 0)
-	await _physics_steps()
-	_check(rock.velocity.x > 0 and rock.position.distance_to(spire.position) >= spire.radius + rock.radius - 0.1, "Rocks bounce off solid spires")
-	var clear := true
-	for core in _cores():
-		for tower in spires:
-			clear = clear and core.position.distance_to(tower.position) > tower.radius + 20
-	_check(clear, "Cores spawn clear of every spire")
-	game.pilot.position = game.BEACON
-	game.presenter.sync()
-	_check(game.presenter.mirrors.size() == game.world.get_child_count(), "Deep Orbit hazards and sentries also receive exactly one mirror each")
-	await _capture("deep-spires")
-	await _collect_all()
-	await _dock()
-	game.choose_upgrade(game.run.upgrade_offers()[0])
-	_freeze_hazards()
-	var well: GravityWell = game.world.get_children().filter(func(n: Node) -> bool: return n is GravityWell)[0]
-	game.pilot.position = well.position + Vector2(-170, 0)
-	game.pilot.velocity = Vector2.ZERO
-	game.pilot.gravity_velocity = Vector2.ZERO
-	var distance: float = game.pilot.position.distance_to(well.position)
-	await create_timer(0.35).timeout
-	_check(game.pilot.position.distance_to(well.position) < distance - 2, "The well physically pulls an idle pilot toward its center")
-	var loose: SalvageCore = _cores()[0]
-	loose.position = well.position + Vector2(130, 0)
-	var core_distance: float = loose.position.distance_to(well.position)
-	await create_timer(0.1).timeout
-	_check(loose.position.distance_to(well.position) < core_distance, "The well slowly drags loose cores")
-	game.pilot.invulnerability = 0
-	game.pilot.dash_remaining = 0
-	game.pilot.position = well.position + Vector2(15, 0)
-	hp = game.pilot.health
-	await _physics_steps()
-	_check(game.pilot.health == hp - 1 and game.pilot.gravity_velocity.x > 400 and game.pilot.position.distance_to(well.position) > well.horizon, "The horizon damages once and flings the ship outward")
-	game.pilot.invulnerability = 999
-	var count := _cores().size()
-	loose.position = well.position
-	await _physics_steps()
-	await process_frame
-	_check(not is_instance_valid(loose) and _cores().size() == count, "Consumed horizon cores respawn elsewhere without reducing the available haul")
-	game.pilot.pulse_cooldown = 0
-	await _action("pulse")
-	_check(well.inversion > 1.4 and well.force_at(well.position + Vector2(120, 0)).x > 0, "Real ion pulse input inverts the well for 1.5 seconds")
-	await _capture("deep-well")
-	await create_timer(1.52).timeout
-	_check(well.inversion == 0 and well.force_at(well.position + Vector2(120, 0)).x < 0, "Gravity resumes pulling when inversion expires")
-	await _collect_all()
-	game.pilot.gravity_velocity = Vector2.ZERO
-	game.pilot.external_force = Vector2.ZERO
-	await _dock()
-	game.choose_upgrade(game.run.upgrade_offers()[0])
-	_freeze_hazards()
-	var boss: Leviathan = game.world.get_children().filter(func(n: Node) -> bool: return n is Leviathan)[0]
-	_check(game.run.sector_index == 3 and _cores().size() == 6, "Leviathan sector begins with six loose cores")
-	boss.set_physics_process(true)
-	var boss_start: Vector2 = boss.position
-	game.pilot.position = Vector2(640, 600)
-	boss.begin_beam()
-	_check(boss.warning > 1.3 and boss.beam == 0, "Leviathan telegraphs a beam before it can hurt the pilot")
-	await _capture("deep-leviathan-beam")
-	game.pilot.position = boss.lane_start.lerp(boss.lane_end, 0.5)
-	game.pilot.invulnerability = 0
-	hp = game.pilot.health
-	await create_timer(1.48).timeout
-	_check(boss.beam > 0 and game.pilot.health == hp - 1, "The warned beam becomes a damaging lane after 1.4 seconds")
-	_check(boss.position.distance_to(boss_start) > 1, "Leviathan patrols its wide upper-band ellipse")
-	game.pilot.invulnerability = 999
-	boss.shed_clock = 0.01
-	var available: int = _cores().size() + game.run.cargo
-	await create_timer(0.05).timeout
-	_check(_cores().size() + game.run.cargo == available + 1, "Leviathan periodically sheds a collectible core")
-	game.pilot.invulnerability = 0
-	game.pilot.dash_remaining = 0
-	game.pilot.position = boss.position + Vector2(0, 30)
-	hp = game.pilot.health
-	await _physics_steps()
-	_check(game.pilot.health == hp - 1 and game.pilot.position.distance_to(boss.position) > 40, "Hull contact damages and separates a ship that is not dashing")
-	game.pilot.invulnerability = 999
-	boss.set_physics_process(false)
-	var before: int = game.run.score
-	for i in 3:
-		game.pilot.position = boss.vent_position(i)
-		game.pilot.dash_remaining = 0.15
-		boss._physics_process(0)
-		await _physics_steps()
-	_check(boss.cracked == [true, true, true] and game.run.score >= before + 2700 and boss.is_silenced and boss.warning == 0 and boss.beam == 0, "Dashing cracks three vents, awards 400 each and 1500 SILENCED, and stops beams")
-	_check(_cores().size() + game.run.cargo + game.run.banked >= 15, "Cracked vents spill three cores apiece")
-	boss.begin_beam()
-	_check(boss.warning == 0, "A silenced Leviathan never starts another beam")
-	await _capture("deep-leviathan-silenced")
-	await _collect_all()
-	game.pilot.gravity_velocity = Vector2.ZERO
-	await _dock()
-	_check(game.state == "won" and game.run.sectors_cleared == 4 and game.run.total_banked >= 42, "A full Deep Orbit run banks its final quota and wins")
-	_check(game.profile.route_records.has("deep") and game.profile.last_scrap == game.profile.payout(game.run.total_banked, 4, true, "deep"), "Deep Orbit victory records its rank and pays the route multiplier")
-	await _capture("deep-result-scrap")
+	# True 3D Deep Orbit is exercised in tests/flight3d_test.gd.
 	await _test_card_actors()
 
 

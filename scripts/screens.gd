@@ -163,7 +163,7 @@ func _build_upgrades(run: Expedition) -> void:
 		UI.label(card, "0%d   /   %s" % [i + 1, data.tag], Vector2(24, 24), 11, data.color)
 		UI.label(card, data.name, Vector2(23, 70), 22)
 		UI.label(card, data.description, Vector2(24, 118), 14, UI.MUTED)
-		UI.label(card, data.stat, Vector2(24, 194), 12, data.color)
+		UI.label(card, ("+10m pickup range per level" if id == "magnet" else "+12m pulse radius · −1s recharge") if run.route == "deep" and id in ["magnet", "pulse"] else data.stat, Vector2(24, 194), 12, data.color)
 		var level := int(run.upgrades[id]) + 1
 		var install := UI.button(card, "%d   INSTALL LEVEL %d     →" % [i + 1, level], Rect2(24, 247, 308, 42), data.color)
 		install.pressed.connect(_select_upgrade.bind(id))
@@ -193,6 +193,8 @@ func _build_hub(profile: FlightProfile) -> void:
 	footer.text = "L / B / T  SECTION   ·   Q  ROUTE   ·   F  FRAME   ·   ↑ ↓ / ← →  SELECT"
 	match hub_section:
 		"launch":
+			if profile.selected_route == "deep":
+				footer.text = "SPACE DASH · E PULSE · I INVERT Y · P PAUSE · ENTER LAUNCH"
 			UI.label(hub_root, "FLIGHT PLAN  /  Q TO SWITCH", Vector2(44, 190), 11, UI.CYAN)
 			var route_button := UI.button(hub_root, "SURVEY ROUTE" if profile.selected_route == "survey" else "DEEP ORBIT", Rect2(44, 216, 540, 44))
 			route_button.pressed.connect(func() -> void: cycle_route(profile))
@@ -203,8 +205,8 @@ func _build_hub(profile: FlightProfile) -> void:
 			var frame_button := UI.button(hub_root, profile.selected_frame.to_upper(), Rect2(44, 370, 540, 44))
 			frame_button.pressed.connect(func() -> void: cycle_frame(profile))
 			var stats: Dictionary = FlightProfile.FRAMES[profile.selected_frame]
-			UI.label(hub_root, "%d HULL   ·   %.2f SPEED   ·   %.1fs DASH   ·   %d MAGNET" % [int(stats.hull) + (1 if profile.owns("plating") else 0), stats.speed, stats.recharge, stats.magnet], Vector2(44, 430), 13, UI.GOLD)
-			UI.label(hub_root, "WASD / arrows steer · SPACE dash · E pulse · F3 Survey view", Vector2(44, 465), 12, UI.MUTED)
+			UI.label(hub_root, "%d HULL   ·   %.2f SPEED   ·   %.1fs DASH   ·   %.1f%s MAGNET" % [int(stats.hull) + (1 if profile.owns("plating") else 0), stats.speed, stats.recharge, (stats.magnet / 6.5 if profile.selected_route == "deep" else stats.magnet), ("m" if profile.selected_route == "deep" else "px")], Vector2(44, 430), 13, UI.GOLD)
+			UI.label(hub_root, ("Mouse / arrows steer · W/S thrust/brake · A/D strafe" if profile.selected_route == "deep" else "WASD / arrows move · SPACE dash · E pulse · F3 view"), Vector2(44, 465), 12, UI.MUTED)
 		"workshop":
 			var ids := FlightProfile.ITEMS.keys()
 			workshop_index = clampi(workshop_index, 0, ids.size() - 1)

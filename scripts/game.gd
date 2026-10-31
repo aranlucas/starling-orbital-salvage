@@ -23,7 +23,8 @@ var elapsed := 0.0
 var shake := 0.0
 var stage: Node2D
 var world: Node2D
-var pilot: Pilot
+var pilot: Node # Pilot (Survey) or FlightPilot (Deep Orbit), sharing the HUD contract.
+var flight: DeepFlight
 var arena: Node2D
 var effects: FlightEffects
 var hud: CanvasLayer
@@ -72,7 +73,7 @@ func _ready() -> void:
 
 
 func _setup_input() -> void:
-	var bindings := {"move_left": [KEY_A, KEY_LEFT], "move_right": [KEY_D, KEY_RIGHT], "move_up": [KEY_W, KEY_UP], "move_down": [KEY_S, KEY_DOWN], "dash": [KEY_SPACE], "pulse": [KEY_E]}
+	var bindings := {"move_left": [KEY_A, KEY_LEFT], "move_right": [KEY_D, KEY_RIGHT], "move_up": [KEY_W, KEY_UP], "move_down": [KEY_S, KEY_DOWN], "dash": [KEY_SPACE], "pulse": [KEY_E], "flight_yaw_left": [KEY_LEFT], "flight_yaw_right": [KEY_RIGHT], "flight_pitch_up": [KEY_UP], "flight_pitch_down": [KEY_DOWN], "flight_thrust": [KEY_W], "flight_brake": [KEY_S], "flight_left": [KEY_A], "flight_right": [KEY_D]}
 	for action in bindings:
 		if not InputMap.has_action(action):
 			InputMap.add_action(action)
@@ -88,6 +89,20 @@ func _build_world() -> void:
 		world.remove_child(child)
 		child.queue_free()
 	effects.clear()
+	if run.route == "deep":
+		if not is_instance_valid(flight):
+			flight = DeepFlight.new()
+			flight.game = self
+			add_child(flight)
+		flight.process_mode = Node.PROCESS_MODE_INHERIT
+		flight.build()
+		pilot = flight.pilot
+		_set_active(state == "running")
+		return
+	if is_instance_valid(flight):
+		remove_child(flight)
+		flight.queue_free()
+		flight = null
 	var sector := run.sector()
 	pilot = PilotScript.new()
 	pilot.configure(run.upgrades, carried_hull, run.frame, run.plating)
@@ -99,13 +114,10 @@ func _build_world() -> void:
 	pilot.pulse_fired.connect(_on_pulse)
 	world.add_child(pilot)
 	presenter.pilot = pilot
-	if run.route == "deep":
-		_build_deep_features()
-	for i in (6 if run.route == "deep" and run.sector_index == 3 else int(sector.quota)):
+	for i in int(sector.quota):
 		var core := CoreScript.new()
 		var angle := TAU * float(i) / int(sector.quota) + rng.randf_range(-0.11, 0.11)
 		core.position = BEACON + Vector2(cos(angle) * rng.randf_range(345, 510), sin(angle) * rng.randf_range(165, 242))
-		core.position = _safe_core_position(core.position)
 		core.pilot = pilot
 		core.collected.connect(_on_core_collected)
 		world.add_child(core)
@@ -182,21 +194,25 @@ func _process(delta: float) -> void:
 		if time_left <= 0:
 			_finish(false, "The sector clock expired before the last delivery.")
 		else:
-			_update_dock(delta)
+			if run.route == "deep":
+				flight.update_dock(delta)
+			else:
+				_update_dock(delta)
 	_update_view()
-	presenter.bank_progress = dock_progress
-	presenter.navigation = _navigation_target() if state == "running" else Vector2.ZERO
-	shake = maxf(0, shake - delta * 18)
-	stage.position = Vector2.ZERO
-	if shake > 0 and not profile.reduced_motion and state == "running" and not presenter.visible:
-		stage.position = Vector2(visual_rng.randf_range(-shake, shake), visual_rng.randf_range(-shake, shake))
-	arena.elapsed = elapsed
-	arena.cargo = run.cargo
-	arena.dock_progress = dock_progress
-	arena.pilot_position = pilot.position
-	arena.destination = _navigation_target() if state == "running" else Vector2.ZERO
-	arena.reduced_motion = profile.reduced_motion
-	arena.queue_redraw()
+	if run.route == "survey":
+		presenter.bank_progress = dock_progress
+		presenter.navigation = _navigation_target() if state == "running" else Vector2.ZERO
+		shake = maxf(0, shake - delta * 18)
+		stage.position = Vector2.ZERO
+		if shake > 0 and not profile.reduced_motion and state == "running" and not presenter.visible:
+			stage.position = Vector2(visual_rng.randf_range(-shake, shake), visual_rng.randf_range(-shake, shake))
+		arena.elapsed = elapsed
+		arena.cargo = run.cargo
+		arena.dock_progress = dock_progress
+		arena.pilot_position = pilot.position
+		arena.destination = _navigation_target() if state == "running" else Vector2.ZERO
+		arena.reduced_motion = profile.reduced_motion
+		arena.queue_redraw()
 	hud.render(run, pilot, time_left, profile, delta if state != "paused" else 0.0)
 
 
@@ -296,7 +312,7 @@ func _navigation_target() -> Vector2:
 	var distance := INF
 	for child in world.get_children():
 		if child is SalvageCore and not child.taken:
-			var next_distance := pilot.position.distance_squared_to(child.position)
+			var next_distance: float = pilot.position.distance_squared_to(child.position)
 			if next_distance < distance:
 				distance = next_distance
 				closest = child.position
@@ -316,6 +332,10 @@ func _finish(won: bool, reason: String = "") -> void:
 
 
 func _set_active(enabled: bool) -> void:
+	if run.route == "deep" and is_instance_valid(flight):
+		flight.set_active(enabled)
+		return
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	pilot.active = enabled
 	world.process_mode = Node.PROCESS_MODE_INHERIT if enabled else Node.PROCESS_MODE_DISABLED
 
@@ -354,8 +374,12 @@ func _toggle_motion() -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and auto_pause and state == "running" and is_instance_valid(pilot):
-		_toggle_pause()
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		if run.route == "deep" and is_instance_valid(flight):
+			flight.pilot.mouse_captured = false
+		if auto_pause and state == "running" and is_instance_valid(pilot):
+			_toggle_pause()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -374,6 +398,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_toggle_sound()
 		KEY_F2:
 			_toggle_motion()
+		KEY_I:
+			if run.route == "deep" and state == "running":
+				profile.invert_y = not profile.invert_y
+				pilot.invert_y = profile.invert_y
+				profile.save()
 		KEY_F3:
 			if run.route == "survey":
 				profile.view_3d = not profile.view_3d
@@ -401,67 +430,14 @@ func return_to_roost() -> void:
 
 func _update_view() -> void:
 	presenter.hub = state == "menu"
-	presenter.visible = state == "menu" or run.route == "deep" or profile.view_3d
-	stage.visible = not presenter.visible
-	hud.notice_panel.position.y = 690 if presenter.visible else 146
+	presenter.visible = state == "menu" or (run.route == "survey" and profile.view_3d)
+	stage.visible = not presenter.visible and run.route == "survey"
+	presenter.viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS if presenter.visible else SubViewport.UPDATE_DISABLED
+	if is_instance_valid(flight):
+		flight.visible = run.route == "deep" and state != "menu"
+		flight.scanner.visible = state == "running"
+		flight.chase.camera.current = flight.visible
+	if state != "running":
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	hud.notice_panel.position.y = 140 if run.route == "deep" and state != "menu" else (690 if presenter.visible else 146)
 	# Effects have their own projection overlay in the presenter.
-
-
-func _safe_core_position(point: Vector2) -> Vector2:
-	var result := point.clamp(Vector2(90, 180), Vector2(1190, 690))
-	for attempt in 100:
-		var valid := true
-		for actor in world.get_children():
-			if actor is FoundrySpire and result.distance_to(actor.position) < actor.radius + 30:
-				valid = false
-			if actor is GravityWell and result.distance_to(actor.position) < actor.horizon + 40:
-				valid = false
-			if actor is Leviathan and absf(result.y - actor.position.y) < 85 and absf(result.x - actor.position.x) < 190:
-				valid = false
-		if valid:
-			return result
-		result = Vector2(rng.randf_range(100, 1180), rng.randf_range(185, 685))
-	return Vector2(640, 620)
-
-
-func spawn_core(point: Vector2) -> void:
-	var core := SalvageCore.new()
-	core.position = _safe_core_position(point)
-	core.pilot = pilot
-	core.collected.connect(_on_core_collected)
-	world.add_child(core)
-
-
-func _build_deep_features() -> void:
-	if run.sector_index == 1:
-		for point in [Vector2(290, 280), Vector2(980, 270), Vector2(320, 600), Vector2(950, 600), Vector2(640, 210)]:
-			var spire := FoundrySpire.new()
-			spire.position = point
-			world.add_child(spire)
-	elif run.sector_index == 2:
-		var well := GravityWell.new()
-		well.position = Vector2(960, 330)
-		well.pilot = pilot
-		well.consumed.connect(func(_core: SalvageCore) -> void: spawn_core.call_deferred(Vector2(rng.randf_range(130, 650), 620)))
-		well.inverted.connect(func() -> void:
-			sound.play("inversion")
-			hud.notice("WELL INVERTED  /  1.5 seconds of outward flow", Color("78f5dd"), 1.5))
-		world.add_child(well)
-	elif run.sector_index == 3:
-		var boss := Leviathan.new()
-		boss.pilot = pilot
-		boss.core_shed.connect(func(point: Vector2) -> void: spawn_core.call_deferred(point))
-		boss.vent_cracked.connect(func(point: Vector2) -> void:
-			run.score += 400
-			sound.play("vent")
-			effects.callout(point, "+400 VENT CRACKED", Color("78f5dd"))
-			for i in 3:
-				spawn_core.call_deferred(point + Vector2((i - 1) * 40, 95)))
-		boss.silenced.connect(func() -> void:
-			run.score += 1500
-			hud.notice("LEVIATHAN SILENCED  /  +1500", Color("78f5dd"), 5)
-			effects.callout(boss.position, "LEVIATHAN SILENCED +1500", Color("78f5dd")))
-		boss.beam_warned.connect(func() -> void:
-			sound.play("beam")
-			hud.notice("BEAM INBOUND  /  Leave the amber lane", Color("ffc780"), 1.4))
-		world.add_child(boss)
