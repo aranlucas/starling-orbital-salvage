@@ -42,7 +42,7 @@ Complete generation prompt:
 All models use Blender's procedural geometry and Principled materials. The editable
 library is `models/deep_orbit_assets.blend`; the individual GLBs retain their
 named child nodes for runtime visibility and effects. The ship thumbnails are
-transparent Cycles renders, and `art/deep_orbit_sky.png` is an equirectangular sky.
+transparent Cycles renders, and `art/deep_orbit_sky.png` is a 4096 × 2048 equirectangular sky with a shaded gas giant. `art/leviathan_closeup.png` documents the chase-camera view. The Leviathan points along +Y with its top along +Z; each wreck fragment has its own centered origin.
 
 | Model | Contents | Game use | Required nodes |
 | --- | --- | --- | --- |
@@ -56,7 +56,9 @@ transparent Cycles renders, and `art/deep_orbit_sky.png` is an equirectangular s
 | `asteroid_c.glb` | Clustered iron shards and copper seams | Rock hazard | — |
 | `foundry_spire.glb` | Tall refinery shaft, platforms, girders and warning lamps | Sector obstacle | — |
 | `gravity_well.glb` | Dark core and amber/violet accretion rings | Gravity hazard | `Ring` |
-| `leviathan.glb` | Armored ore hauler, broken cranes, reactor and three vents | Boss | `Vent_0`, `Vent_1`, `Vent_2` |
+| `leviathan.glb` | Layered ore hauler with open cargo bays, ore, broken cranes, engine bank, reactor spine and recessed glowing vents | Boss | `Vent_0`, `Vent_1`, `Vent_2` |
+| `wreck_fragments.glb` | Six centered pieces of torn hull, truss, container and machinery | Free-flight debris | `Fragment_0` … `Fragment_5` |
+| `ring_arc.glb` | Broken 60-degree orbital segment with habitat lights, solar fins and exposed girders | Distant sector dressing | — |
 
 Rebuild the library, exports, sky, thumbnails, and lineup with:
 

@@ -250,22 +250,102 @@ for i in range(16):
     sphere('Accretion fragment',(3.35*math.cos(t),3.35*math.sin(t),rng.uniform(-.15,.15)),(.12,.22,.07),engine if i%3 else violet,wr,1)
 
 lev=asset('leviathan')
-extrude('Massive armored keel',[(-3.3,-14),(3.3,-14),(3.8,-9),(3.6,8),(2.5,13),(0,15),(-2.5,13),(-3.6,8),(-3.8,-9)],-.9,.65,graphite,lev)
-extrude('Upper ore hull',[(-3,-12),(3,-12),(3.1,8),(2.1,12),(0,14),(-2.1,12),(-3.1,8)],.65,1.35,ivory,lev)
-for y in (-10,-6,-2,2,6,10):
+extrude('Armored keel',[(-3.3,-14),(3.3,-14),(3.8,-9),(3.6,8),(2.5,13),(0,15),(-2.5,13),(-3.6,8),(-3.8,-9)],-.9,.65,graphite,lev)
+# Cargo bays are open: raised coamings surround dark floors and irregular ore.
+for y in (-9,-3,3,9):
+    cube('Cargo bay floor',(0,y,.68),(4.9,4.9,.18),dark,lev)
     for side in (-1,1):
-        cube('Armored cargo plate',(side*2.25,y,1.42),(1.25,3.4,.24),ivory,lev,.12)
-        cube('Orange hazard plate',(side*2.25,y-1.1,1.57),(1.1,.22,.08),orange,lev)
-for y in (-8,0,8):
-    for side in (-1,1):
-        beam('Crane upright',(side*3.1,y,1),(side*3.5,y,3.2),.22,graphite,lev)
-        beam('Broken crane boom',(side*3.5,y,3.2),(side*2.5,y+1.5,4.0),.2,orange,lev)
+        cube('Bay longitudinal coaming',(side*2.55,y,1.05),(.28,4.9,.8),graphite,lev)
+        cube('Layered shoulder armor',(side*3.0,y,1.04),(.65,4.5,.44),ivory,lev,.08)
+        for j in range(4):
+            cube('Shoulder inset',(side*3.02,y-1.65+j*1.1,1.29),(.48,.85,.08),graphite if j%3==0 else ivory,lev,.02)
+        for j in range(5):
+            cube('Side hull panel',(side*3.48,y-1.8+j*.85,.05),(.16,.68,.9),ivory if j%3 else orange,lev,.025)
+    for dy in (-2.4,2.4): cube('Bay cross bulkhead',(0,y+dy,1.0),(5.2,.24,.68),graphite,lev)
+    for j in range(10):
+        x=rng.choice((-1,1))*rng.uniform(1.0,2.1); yy=y+rng.uniform(-1.9,1.9)
+        rocky('Spilled ore',(x,yy,.85),(rng.uniform(.25,.48),rng.uniform(.3,.55),rng.uniform(.18,.35)),lev,1000+j+int(y*10))
+# Spine and target housings rise above the recessed bays.
+cube('Reactor spine',(0,0,1.02),(1.35,27,.6),graphite,lev,.10)
+for y in range(-13,14):
+    cube('Spine rib',(0,y,1.37),(1.2,.14,.12),ivory,lev,.02)
+    if y%2==0:
+        for side in (-1,1): cube('Spine status lamp',(side*.56,y,1.46),(.10,.28,.06),mint if y%4==0 else engine,lev,.01)
 for i,y in enumerate((-8,0,8)):
     vent=root('Vent_%d'%i,lev)
-    cube('Vent frame',(0,y,1.46),(1.5,2.1,.25),graphite,vent,.08)
-    cube('Vent reactor glow',(0,y,1.61),(1.15,1.7,.08),engine,vent,.03)
-    for yy in (-.55,0,.55): cube('Vent grille',(0,y+yy,1.68),(1.25,.11,.08),graphite,vent,.015)
-cylinder('Stern reactor',(0,-14.1,.1),1.05,.2,engine,lev,'Y',24)
+    cube('Hatch recessed well',(0,y,1.48),(1.9,2.35,.16),dark,vent,.04)
+    cube('Hatch amber core',(0,y,1.58),(1.38,1.85,.08),engine,vent,.03)
+    for x in (-.95,.95): cube('Hatch side rim',(x,y,1.68),(.18,2.45,.25),orange,vent,.02)
+    for dy in (-1.12,1.12): cube('Hatch end rim',(0,y+dy,1.68),(1.9,.18,.25),ivory,vent,.02)
+    for dy in (-.6,0,.6): cube('Hatch grille',(0,y+dy,1.67),(1.35,.08,.08),graphite,vent,.01)
+for y in (-9,3,9):
+    for side in (-1,1):
+        beam('Crane upright',(side*2.8,y,1.3),(side*3.0,y,3.5),.19,graphite,lev)
+        beam('Crane broken boom',(side*3.0,y,3.5),(side*2.0,y+1.0,3.95),.18,orange,lev)
+        beam('Crane brace',(side*2.8,y,1.5),(side*2.0,y+1.0,3.95),.09,graphite,lev)
+for side in (-1,1):
+    for y in (-12,-6,0,6,12):
+        cube('Hazard stripe ground',(side*3.05,y,1.35),(.65,.72,.05),graphite,lev,.01)
+        for j in range(3):
+            ob=cube('Hazard stripe',(side*3.05,y-.22+j*.22,1.39),(.62,.09,.035),orange,lev,.005); ob.rotation_euler.z=.3
+        sphere('Running light',(side*3.5,y,1.0),(.1,.1,.1),mint if y>0 else engine,lev,1)
+for x in (-2.3,-1.15,0,1.15,2.3):
+    cylinder('Engine armored bell',(x,-14.0,.1),.55,1.1,graphite,lev,'Y',16)
+    cylinder('Engine glowing core',(x,-14.58,.1),.39,.08,engine,lev,'Y',16)
+for x,y in ((-2.7,11),(2.7,-12)):
+    beam('Antenna mast',(x,y,1.2),(x,y,3.3),.1,graphite,lev)
+    sphere('Mast beacon',(x,y,3.35),(.12,.12,.12),engine,lev,1)
+
+frags=asset('wreck_fragments')
+for i in range(6):
+    f=root('Fragment_%d'%i,frags)
+    if i==0:
+        extrude('Torn hull plate',[(-2.5,-1.7),(2.2,-1.5),(1.8,-.3),(2.5,.3),(.8,1.6),(-.3,1.1),(-1.4,1.8),(-2.3,.8)],-.18,.18,ivory,f)
+        for x in (-1.5,0,1.3): cube('Plate reinforcing rib',(x,0,.25),(.16,2.3,.2),graphite,f)
+    elif i==1:
+        for x in (-.8,.8): beam('Snapped truss rail',(x,-3,0),(x,3,0),.25,graphite,f)
+        for y in range(-3,3):
+            beam('Truss crossmember',(-.8,y,0),(.8,y,0),.16,orange,f)
+            beam('Truss diagonal',(-.8,y,0),(.8,y+1,0),.12,ivory,f)
+    elif i==2:
+        cube('Cargo container',(0,0,0),(3.1,5,2.4),graphite,f,.12)
+        for x in (-1.15,-.38,.38,1.15): cube('Container raised panel',(x,0,1.25),(.63,4.6,.16),ivory,f)
+        for y in (-1.8,1.8): cube('Container tie',(0,y,1.35),(3.2,.18,.12),orange,f)
+    elif i==3:
+        cylinder('Nacelle shell',(0,0,0),1.5,5,graphite,f,'Y',20)
+        cylinder('Nacelle hollow lip',(0,-2.55,0),1.25,.18,ivory,f,'Y',20)
+        cylinder('Nacelle dark opening',(0,-2.66,0),1.0,.06,dark,f,'Y',20)
+        for x in (-1,1): cube('Nacelle armor',(x,0,1.05),(.6,4,.25),ivory,f)
+    elif i==4:
+        extrude('Jagged deck',[(-3,-2),(2.5,-2),(3,-.5),(1,.2),(2,1.5),(-1,2),(-2,1)],-.2,.2,graphite,f)
+        for x in (-1.8,0,1.6): cube('Deck tile',(x,-.3,.26),(1.1,2.3,.14),ivory,f)
+        beam('Bent spar',(-2,-1,.3),(-3,1.5,1.5),.2,orange,f)
+    else:
+        cube('Broken machinery core',(0,0,0),(2.8,3.2,1.6),graphite,f,.1)
+        for x in (-1.6,1.6):
+            beam('Outrigger',(x,-2,0),(x,2,0),.3,ivory,f)
+            beam('Broken brace',(x,0,0),(x*1.8,1,1),.18,orange,f)
+        for y in (-1,0,1): cylinder('Exposed pipe',(0,y,1),.18,2.5,engine if y==0 else ivory,f,'Y',12)
+
+arc=asset('ring_arc')
+# Radius 95.5 gives approximately 100 units of arc over 60 degrees.
+radius=95.5
+points=[]
+for i in range(25):
+    t=math.radians(-30+60*i/24)
+    points.append(Vector((radius*math.sin(t),radius*(math.cos(t)-1),0)))
+for i,(a1,b1) in enumerate(zip(points,points[1:])):
+    for z,mat,w in ((-.7,graphite,1.2),(.5,ivory,1.0)):
+        beam('Ring longitudinal deck',a1+Vector((0,0,z)),b1+Vector((0,0,z)),w,mat,arc)
+    if i%2==0:
+        p=(a1+b1)/2
+        cube('Habitat window strip',p+Vector((0,0,1.1)),(2.0,.35,.18),engine,arc,.02)
+    if i%4==1:
+        p=(a1+b1)/2
+        ob=cube('Solar panel fin',p+Vector((0,0,3)),(3.0,.15,4),teal,arc,.03)
+        for z in (1.7,2.8,3.9): cube('Solar panel rib',p+Vector((0,-.09,z)),(3,.1,.06),graphite,arc,.01)
+for p in (points[0],points[-1]):
+    for z in (-.5,.2,.8): beam('Exposed end girder',p+Vector((0,0,z)),p+Vector(((-1 if p.x<0 else 1)*2.8,0,z+.35)),.18,orange,arc)
 
 scene=bpy.context.scene
 scene.render.engine='CYCLES'
@@ -309,15 +389,26 @@ for target,name in assets:
         scene.render.filepath=str(ART/(name+'.png'))
         bpy.ops.render.render(write_still=True)
 
+# Close chase-camera study before arranging the library.
+for model,_ in assets:
+    for obj in [model,*model.children_recursive]: obj.hide_render=model != lev
+cam.location=(4,-16,4.5); cam.rotation_euler=(Vector((0,-3,1.5))-cam.location).to_track_quat('-Z','Y').to_euler()
+cam_data.type='PERSP'; cam_data.lens=35
+scene.render.resolution_x=1600; scene.render.resolution_y=900
+scene.render.film_transparent=False
+light('Closeup softbox',(0,-5,14),(1,.82,.65),3200,15)
+scene.render.filepath=str(ART/'leviathan_closeup.png'); bpy.ops.render.render(write_still=True)
+
 # Arrange the editable library in rows, scaling only root transforms for the portrait.
 # Individual GLBs above remain in metres and at the origin.
-positions=[(-11,7),(-6,7),(-2,7),(3,7),(8,7),(-11,0),(-7,0),(-3,0),(.2,-1),(5,0),(11,0)]
-scales={'roost_station':.38,'foundry_spire':.48,'gravity_well':.48,'leviathan':.28,'salvage_wing':2.6}
+positions=[(-11,7),(-6,7),(-2,7),(3,7),(8,7),(-11,0),(-7,0),(-3,0),(.2,-1),(5,0),(11,0),(-9,-7),(5,-7)]
+scales={'roost_station':.38,'foundry_spire':.48,'gravity_well':.48,'leviathan':.28,'salvage_wing':2.6,'wreck_fragments':.55,'ring_arc':.12}
+for i, frag in enumerate(frags.children): frag.location=((i%3-1)*5, (i//3-.5)*6, 0)
 for (model,name),(x,y) in zip(assets,positions):
     model.location=(x,y,0); model.scale=(scales.get(name,1),)*3
     for obj in [model,*model.children_recursive]: obj.hide_render=False
-cam.location=(0,-23,27); cam.rotation_euler=(Vector((0,3,0))-cam.location).to_track_quat('-Z','Y').to_euler()
-cam_data.type='PERSP'; cam_data.lens=40
+cam.location=(0,-38,43); cam.rotation_euler=(Vector((0,0,0))-cam.location).to_track_quat('-Z','Y').to_euler()
+cam_data.type='PERSP'; cam_data.lens=35
 scene.render.resolution_x=1800; scene.render.resolution_y=900
 scene.render.film_transparent=False
 bg.inputs[0].default_value=(.018,.032,.05,1); bg.inputs[1].default_value=.5
@@ -342,11 +433,25 @@ ramp.color_ramp.elements.new(.58).color=(.025,.024,.021,1)
 links.new(noise.outputs['Fac'],ramp.inputs[0])
 vor=nodes.new('ShaderNodeTexVoronoi'); vor.inputs['Scale'].default_value=170; links.new(tex.outputs['Normal'],vor.inputs['Vector'])
 stars=nodes.new('ShaderNodeValToRGB'); stars.color_ramp.elements[0].position=.025; stars.color_ramp.elements[0].color=(.5,.45,.34,1); stars.color_ramp.elements[1].position=.07; stars.color_ramp.elements[1].color=(0,0,0,1); links.new(vor.outputs['Distance'],stars.inputs[0])
-add=nodes.new('ShaderNodeMixRGB'); add.blend_type='ADD'; add.inputs[0].default_value=1; links.new(ramp.outputs[0],add.inputs[1]); links.new(stars.outputs[0],add.inputs[2]); links.new(add.outputs[0],background.inputs[0]); background.inputs[1].default_value=1
-# A distant subdued planet is actual geometry, so its curved limb is visible low in the panorama.
-planetmat=material('Distant pale planet',(.11,.17,.19),0,.9,.25)
-sphere('Distant planet',(0,40,-180),(125,125,125),planetmat,None,4)
+add=nodes.new('ShaderNodeMixRGB'); add.blend_type='ADD'; add.inputs[0].default_value=1; links.new(ramp.outputs[0],add.inputs[1]); links.new(stars.outputs[0],add.inputs[2]); # A second, lower-density field makes a handful of stars legible at flight scale.
+bright=nodes.new('ShaderNodeTexVoronoi'); bright.inputs['Scale'].default_value=12; links.new(tex.outputs['Normal'],bright.inputs['Vector'])
+bright_ramp=nodes.new('ShaderNodeValToRGB'); bright_ramp.color_ramp.elements[0].position=.01; bright_ramp.color_ramp.elements[0].color=(3,2.4,1.6,1); bright_ramp.color_ramp.elements[1].position=.045; bright_ramp.color_ramp.elements[1].color=(0,0,0,1); links.new(bright.outputs['Distance'],bright_ramp.inputs[0])
+bright_add=nodes.new('ShaderNodeMixRGB'); bright_add.blend_type='ADD'; bright_add.inputs[0].default_value=1; links.new(add.outputs[0],bright_add.inputs[1]); links.new(bright_ramp.outputs[0],bright_add.inputs[2]); links.new(bright_add.outputs[0],background.inputs[0]); background.inputs[1].default_value=1
+# Procedural spherical gas giant, shaded by a distant sun and rim emission.
+planetmat=bpy.data.materials.new('Gas giant banded atmosphere'); planetmat.use_nodes=True
+n=planetmat.node_tree.nodes; l=planetmat.node_tree.links; n.clear()
+outp=n.new('ShaderNodeOutputMaterial'); bs=n.new('ShaderNodeBsdfPrincipled'); l.new(bs.outputs[0],outp.inputs['Surface'])
+bs.inputs['Roughness'].default_value=.85
+coord=n.new('ShaderNodeTexCoord'); mapping=n.new('ShaderNodeVectorMath'); mapping.operation='MULTIPLY'; mapping.inputs[1].default_value=(2.6,2.6,18); l.new(coord.outputs['Generated'],mapping.inputs[0])
+cloud=n.new('ShaderNodeTexNoise'); cloud.inputs['Scale'].default_value=2; cloud.inputs['Detail'].default_value=3; cloud.inputs['Roughness'].default_value=.7; l.new(mapping.outputs[0],cloud.inputs[0])
+colors=n.new('ShaderNodeValToRGB'); colors.color_ramp.elements[0].color=(.035,.055,.065,1); colors.color_ramp.elements[1].color=(.42,.31,.20,1); colors.color_ramp.elements.new(.52).color=(.16,.19,.18,1); l.new(cloud.outputs['Fac'],colors.inputs[0]); l.new(colors.outputs[0],bs.inputs['Base Color'])
+layer=n.new('ShaderNodeLayerWeight'); layer.inputs['Blend'].default_value=.25
+rim=n.new('ShaderNodeValToRGB'); rim.color_ramp.elements[0].position=.78; rim.color_ramp.elements[0].color=(0,0,0,1); rim.color_ramp.elements[1].position=.99; rim.color_ramp.elements[1].color=(.10,.35,.32,1); l.new(layer.outputs['Facing'],rim.inputs[0]); l.new(rim.outputs[0],bs.inputs['Emission Color']); bs.inputs['Emission Strength'].default_value=.7
+planet=sphere('Distant gas giant',(0,120,-205),(115,115,115),planetmat,None,5)
+for face in planet.data.polygons: face.use_smooth=True
+sun_data=bpy.data.lights.new('Planet sunlight','SUN'); sun_data.energy=2; sun_data.color=(1,.79,.58)
+sun=bpy.data.objects.new('Planet sunlight',sun_data); bpy.context.collection.objects.link(sun); sun.rotation_euler=(.45,-.7,-.4)
 cam.location=(0,0,0); cam.rotation_euler=(math.pi/2,0,0); cam_data.type='PANO'; cam_data.panorama_type='EQUIRECTANGULAR'
 scene.render.resolution_x=4096; scene.render.resolution_y=2048; scene.cycles.samples=8
 scene.render.filepath=str(ART/'deep_orbit_sky.png'); bpy.ops.render.render(write_still=True)
-print('STARLING: exported %d Deep Orbit GLBs, four renders, sky and editable library.' % len(assets))
+print('STARLING: exported %d Deep Orbit GLBs, renders, sky and editable library.' % len(assets))
