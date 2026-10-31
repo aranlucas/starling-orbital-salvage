@@ -36,3 +36,30 @@ collectibles, effects, and HUD above it.
 Complete generation prompt:
 
 > Use case: stylized-concept. Asset type: subtle playable 2D space-game arena background for Starling. Create a landscape 1536x1024 deep-space environment texture, rich midnight navy and dark petrol blue with very faint teal interstellar dust, a few tiny distant warm stars, soft painterly cinematic volumetric depth. A very small distant partially shadowed pale planet sits in the upper left, taking less than 10 percent of the canvas; faint nebula wisps at the far right. Most of the image must be very dark, spacious and calm with low contrast, suitable behind a top-down arcade game with small bright moving ships, asteroids, and collectibles. The central 85 percent must have excellent gameplay readability. Beautiful high-end science-fiction atmosphere, restrained and elegant. No ships, no asteroids, no rocks, no grids, no UI, no words, no borders, no text, no logos, no watermark. This is an actual tiled-free background layer for the gameplay arena, not a concept screenshot.
+
+## Deep Orbit models
+
+All models use Blender's procedural geometry and Principled materials. The editable
+library is `models/deep_orbit_assets.blend`; the individual GLBs retain their
+named child nodes for runtime visibility and effects. The ship thumbnails are
+transparent Cycles renders, and `art/deep_orbit_sky.png` is an equirectangular sky.
+
+| Model | Contents | Game use | Required nodes |
+| --- | --- | --- | --- |
+| `kestrel.glb` | Swept ceramic wings, mint canopy, single large engine | Fast ship frame | — |
+| `albatross.glb` | Broad armored hull, cargo pods, four engines | Heavy ship frame | — |
+| `salvage_wing.glb` | Compact salvage drone with mint optic | Companion | — |
+| `dock_beacon.glb` | Landing pad, mint guide ring | In-sector safe dock | `Ring` |
+| `roost_station.glb` | Core ring, landing pad, eight modular additions | Home hub | `Pad`, `Module_Charts`, `Module_Kestrel`, `Module_Albatross`, `Module_Fabricator`, `Module_Plating`, `Module_Broker`, `Module_Rig` |
+| `meteor.glb` | Faceted scorched crust and molten emissive fissures | Meteor hazard | — |
+| `asteroid_b.glb` | Elongated iron rock and copper seams | Rock hazard | — |
+| `asteroid_c.glb` | Clustered iron shards and copper seams | Rock hazard | — |
+| `foundry_spire.glb` | Tall refinery shaft, platforms, girders and warning lamps | Sector obstacle | — |
+| `gravity_well.glb` | Dark core and amber/violet accretion rings | Gravity hazard | `Ring` |
+| `leviathan.glb` | Armored ore hauler, broken cranes, reactor and three vents | Boss | `Vent_0`, `Vent_1`, `Vent_2` |
+
+Rebuild the library, exports, sky, thumbnails, and lineup with:
+
+```sh
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python tools/build_deep_orbit_models.py
+```
