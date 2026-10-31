@@ -1,0 +1,128 @@
+name: Release macOS
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version to publish, for example v0.1.0 (run from its source branch or tag)'
+        required: true
+        type: string
+        default: v0.1.0
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  GODOT_VERSION: '4.7.2'
+
+jobs:
+  build:
+    name: Test and build universal macOS app
+    runs-on: macos-15
+    timeout-minutes: 30
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate release version and source
+        id: version
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo 'Expected a version tag such as v0.1.0 or v0.1.0-beta.1.' >&2
+            exit 1
+          fi
+          if git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"; then
+            if [[ "$(git rev-parse "$RELEASE_TAG^{commit}")" != "$(git rev-parse HEAD)" ]]; then
+              echo 'That tag points to a different commit. Run this workflow from the matching tag.' >&2
+              exit 1
+            fi
+          fi
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Install official Godot editor and macOS export template
+        run: |
+          python3 tools/install_godot.py \
+            --version "$GODOT_VERSION" \
+            --destination "$RUNNER_TEMP/godot" \
+            --cache "$RUNNER_TEMP/godot-downloads"
+
+      - name: Import project and run gameplay integration checks
+        timeout-minutes: 3
+        run: |
+          Godot --headless --path . --editor --quit
+          Godot --headless --path . --script tests/smoke_test.gd
+
+      - name: Export, package, and verify standalone app
+        timeout-minutes: 10
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: python3 tools/build_macos_release.py "$RELEASE_TAG"
+
+      - name: Preserve verified release assets
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-release
+          path: |
+            builds/release/Starling-*-macOS-universal.zip
+            builds/release/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Preserve build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-build-logs
+          path: builds/release/*.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  publish:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: macos-release
+          path: builds/release
+      - name: Check download integrity
+        working-directory: builds/release
+        run: sha256sum --check SHA256SUMS.txt
+      - name: Create release and upload compiled game
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          args=()
+          if [[ "$RELEASE_TAG" == *-* ]]; then
+            args+=(--prerelease)
+          fi
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Starling $RELEASE_TAG" \
+            --notes-file .github/release-notes.md \
+            "${args[@]}" \
+            builds/release/Starling-*-macOS-universal.zip \
+            builds/release/SHA256SUMS.txt

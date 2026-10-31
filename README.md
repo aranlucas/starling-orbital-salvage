@@ -4,6 +4,11 @@ A complete **Godot 4.6+** arcade salvage game. Take one ship through a three-sec
 expedition: recover energy cores, bank cargo at the safe dock, and build a ship
 that can make it through the storm. A full expedition takes roughly 2–4 minutes.
 
+Download the standalone macOS app from [GitHub Releases](https://github.com/aranlucas/starling-orbital-salvage/releases).
+The universal build supports Apple Silicon (macOS 13+) and Intel (macOS 11+).
+Unzip the download and open `Starling.app`; Godot is only needed to edit the game.
+Release builds are ad-hoc signed and are not Apple-notarized.
+
 ## Play
 
 1. Install [Godot 4.6 or newer](https://godotengine.org/download/).
@@ -149,3 +154,37 @@ godot --path . --maximized --script tools/native_playtest.gd
 The maximized launch also avoids stale initial window captures observed during
 native macOS computer-use testing. If an existing window shows an old frame,
 zooming the window refreshes it. The test profile never changes player records.
+
+## Automated releases
+
+[Release macOS](https://github.com/aranlucas/starling-orbital-salvage/actions/workflows/release.yml)
+builds and publishes a universal macOS app when a version tag is pushed:
+
+```sh
+git tag v0.1.1
+git push origin v0.1.1
+```
+
+You can also use **Actions → Release macOS → Run workflow**, select the source
+branch or tag, and enter a new version such as `v0.1.1`. The workflow creates
+the release tag at the built commit if it does not exist. It rejects an existing
+tag that points to a different commit and never overwrites an existing release.
+Tags with a suffix such as `v0.2.0-beta.1` produce prereleases.
+
+The workflow pins Godot 4.7.2 and GitHub actions to specific versions/commits,
+checks official download SHA-512 hashes, runs the gameplay integration suite,
+exports the app, verifies its universal binary and ad-hoc signature, and launches
+the app from an extracted copy of the final ZIP. It then attaches the ZIP and
+`SHA256SUMS.txt` to the GitHub release. Only the publishing job has write access;
+it uses the built-in `GITHUB_TOKEN` and requires no repository secrets.
+
+To build the same package locally on macOS, install the matching Godot editor
+and export templates, then run:
+
+```sh
+GODOT_BIN=/path/to/Godot.app/Contents/MacOS/Godot \
+  python3 tools/build_macos_release.py v0.1.0
+```
+
+Artifacts go to `builds/release/`, which is ignored by Git. The builder sets the
+version in a temporary project copy, leaving the source checkout unchanged.
