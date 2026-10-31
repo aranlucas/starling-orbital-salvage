@@ -12,6 +12,7 @@ const SoundScript := preload("res://scripts/sound.gd")
 const BEACON := Vector2(640, 431)
 const DOCK_SECONDS := 0.7
 
+var presenter: OrbitPresenter
 var state := "menu"
 var run := Expedition.new()
 var profile := FlightProfile.new()
@@ -36,6 +37,8 @@ var auto_pause := true
 func _ready() -> void:
 	_setup_input()
 	rng.randomize()
+	if "--unlock-all" in OS.get_cmdline_user_args():
+		profile.enable_preview()
 	profile.load_profile()
 	stage = Node2D.new()
 	add_child(stage)
@@ -49,8 +52,16 @@ func _ready() -> void:
 	sound = SoundScript.new()
 	add_child(sound)
 	sound.muted = profile.muted
+	presenter = OrbitPresenter.new()
+	add_child(presenter)
+	presenter.profile = profile
+	presenter.sim = world
+	presenter.overlay.effects = effects
 	hud = HudScript.new()
 	add_child(hud)
+	hud.screens.hub_changed.connect(_show_screen)
+	hud.screens.purchased.connect(func() -> void: sound.play("purchase"))
+	hud.screens.roost_pressed.connect(return_to_roost)
 	hud.screens.primary_pressed.connect(_primary_action)
 	hud.screens.upgrade_selected.connect(choose_upgrade)
 	hud.screens.sound_toggled.connect(_toggle_sound)
@@ -79,7 +90,7 @@ func _build_world() -> void:
 	effects.clear()
 	var sector := run.sector()
 	pilot = PilotScript.new()
-	pilot.configure(run.upgrades, carried_hull)
+	pilot.configure(run.upgrades, carried_hull, run.frame, run.plating)
 	pilot.reduced_motion = profile.reduced_motion
 	pilot.position = BEACON
 	pilot.damaged.connect(_on_damage)
@@ -87,10 +98,14 @@ func _build_world() -> void:
 	pilot.dashed.connect(func() -> void: sound.play("dash"))
 	pilot.pulse_fired.connect(_on_pulse)
 	world.add_child(pilot)
-	for i in int(sector.quota):
+	presenter.pilot = pilot
+	if run.route == "deep":
+		_build_deep_features()
+	for i in (6 if run.route == "deep" and run.sector_index == 3 else int(sector.quota)):
 		var core := CoreScript.new()
 		var angle := TAU * float(i) / int(sector.quota) + rng.randf_range(-0.11, 0.11)
 		core.position = BEACON + Vector2(cos(angle) * rng.randf_range(345, 510), sin(angle) * rng.randf_range(165, 242))
+		core.position = _safe_core_position(core.position)
 		core.pilot = pilot
 		core.collected.connect(_on_core_collected)
 		world.add_child(core)
@@ -112,7 +127,14 @@ func _build_world() -> void:
 			sound.play("warning"))
 		storm.deflected.connect(_on_shattered.bind(100))
 		world.add_child(storm)
+	for i in int(run.upgrades.wing):
+		var wing := SalvageWing.new()
+		wing.pilot = pilot
+		wing.orbit = i * PI
+		wing.position = pilot.position + Vector2.from_angle(i * PI) * 70
+		world.add_child(wing)
 	arena.accent = sector.color
+	presenter.sync()
 	_set_active(state == "running")
 
 
@@ -134,19 +156,20 @@ func _spawn_debris() -> void:
 
 func start_mission() -> void:
 	run = Expedition.new()
-	carried_hull = 3
+	run.configure(profile, rng.randi())
+	carried_hull = int(FlightProfile.FRAMES[run.frame].hull) + (1 if run.plating else 0) + int(run.upgrades.hull)
 	first_pickup = true
 	_launch_sector()
 
 
 func _launch_sector() -> void:
 	state = "running"
-	time_left = float(run.sector().seconds)
+	time_left = run.sector_seconds()
 	dock_progress = 0
 	shake = 0
 	_build_world()
 	_show_screen()
-	hud.notice("SECTOR %d / 3  ·  %s  ·  Recover and bank %d cores" % [run.sector_index + 1, run.sector().name, run.sector().quota], run.sector().color, 4.0)
+	hud.notice("SECTOR %d / %d  ·  %s  ·  Recover and bank %d cores" % [run.sector_index + 1, run.sectors().size(), run.sector().name, run.sector().quota], run.sector().color, 4.0)
 
 
 func _process(delta: float) -> void:
@@ -160,9 +183,12 @@ func _process(delta: float) -> void:
 			_finish(false, "The sector clock expired before the last delivery.")
 		else:
 			_update_dock(delta)
+	_update_view()
+	presenter.bank_progress = dock_progress
+	presenter.navigation = _navigation_target() if state == "running" else Vector2.ZERO
 	shake = maxf(0, shake - delta * 18)
 	stage.position = Vector2.ZERO
-	if shake > 0 and not profile.reduced_motion and state == "running":
+	if shake > 0 and not profile.reduced_motion and state == "running" and not presenter.visible:
 		stage.position = Vector2(visual_rng.randf_range(-shake, shake), visual_rng.randf_range(-shake, shake))
 	arena.elapsed = elapsed
 	arena.cargo = run.cargo
@@ -176,7 +202,7 @@ func _process(delta: float) -> void:
 
 func _update_dock(delta: float) -> void:
 	if run.cargo > 0 and pilot.position.distance_to(BEACON) < 54:
-		dock_progress = minf(1, dock_progress + delta / DOCK_SECONDS)
+		dock_progress = minf(1, dock_progress + delta / run.bank_seconds())
 		if dock_progress >= 1:
 			var count := run.bank_cargo()
 			pilot.cargo_load = 0
@@ -193,7 +219,7 @@ func _update_dock(delta: float) -> void:
 func _complete_sector() -> void:
 	run.complete_sector(time_left, pilot.health)
 	carried_hull = pilot.health
-	if run.sector_index == Expedition.SECTORS.size() - 1:
+	if run.sector_index == run.sectors().size() - 1:
 		_finish(true)
 	else:
 		state = "upgrade"
@@ -205,7 +231,7 @@ func _complete_sector() -> void:
 func choose_upgrade(id: String) -> void:
 	if state != "upgrade" or not run.advance(id):
 		return
-	carried_hull = mini(carried_hull + 1 + (1 if id == "hull" else 0), 3 + int(run.upgrades.hull))
+	carried_hull = mini(carried_hull + 1 + (1 if id == "hull" else 0), int(FlightProfile.FRAMES[run.frame].hull) + (1 if run.plating else 0) + int(run.upgrades.hull))
 	sound.play("upgrade")
 	_launch_sector()
 
@@ -214,6 +240,8 @@ func _on_core_collected(core: SalvageCore) -> void:
 	if state != "running":
 		return
 	var points := run.collect()
+	if run.free_pulse_due():
+		_on_pulse()
 	pilot.cargo_load = run.cargo
 	effects.burst(core.position, Color("f3c77b"))
 	effects.callout(core.position + Vector2(8, -20), "+%d  x%d" % [points, run.multiplier()], Color("f3c77b"))
@@ -239,6 +267,7 @@ func _on_damage() -> void:
 
 
 func _on_pulse() -> void:
+	pilot.invulnerability = maxf(pilot.invulnerability, 0.35)
 	effects.wave(pilot.position, pilot.pulse_radius, Color("b0a9ff"))
 	for child in world.get_children():
 		if child.has_method("receive_pulse"):
@@ -252,6 +281,8 @@ func _on_shattered(point: Vector2, points: int) -> void:
 	if state != "running":
 		return
 	run.score += points
+	if pilot.dash_remaining > 0:
+		time_left += 1.5 * int(run.upgrades.ram)
 	effects.burst(point, Color("ffbd8f"), 24)
 	effects.callout(point, "+%d SHATTER" % points, Color("ffbd8f"))
 	sound.play("shatter")
@@ -277,7 +308,7 @@ func _finish(won: bool, reason: String = "") -> void:
 		return
 	state = "won" if won else "lost"
 	_set_active(false)
-	profile.record_run(run.score, won)
+	profile.record_run(run.score, won, run.route, run.total_banked, run.sectors_cleared, run.rank())
 	if won:
 		effects.burst(BEACON, Color("78f5dd"), 80)
 	sound.play("win" if won else "lose")
@@ -291,6 +322,7 @@ func _set_active(enabled: bool) -> void:
 
 func _show_screen() -> void:
 	hud.screens.present(state, run, profile)
+	_update_view()
 
 
 func _primary_action() -> void:
@@ -342,9 +374,94 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_toggle_sound()
 		KEY_F2:
 			_toggle_motion()
+		KEY_F3:
+			if run.route == "survey":
+				profile.view_3d = not profile.view_3d
+				profile.save()
+				_update_view()
+		KEY_H:
+			if state in ["won", "lost"]:
+				return_to_roost()
+		KEY_L, KEY_B, KEY_T, KEY_Q, KEY_F, KEY_SPACE, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT:
+			if state == "menu":
+				hud.screens.hub_key(key, profile)
 		KEY_1, KEY_2, KEY_3:
 			if state == "upgrade":
 				var index: int = key - KEY_1
 				var offers := run.upgrade_offers()
 				if index < offers.size():
 					choose_upgrade(offers[index])
+
+
+func return_to_roost() -> void:
+	state = "menu"
+	_set_active(false)
+	_show_screen()
+
+
+func _update_view() -> void:
+	presenter.hub = state == "menu"
+	presenter.visible = state == "menu" or run.route == "deep" or profile.view_3d
+	stage.visible = not presenter.visible
+	hud.notice_panel.position.y = 690 if presenter.visible else 146
+	# Effects have their own projection overlay in the presenter.
+
+
+func _safe_core_position(point: Vector2) -> Vector2:
+	var result := point.clamp(Vector2(90, 180), Vector2(1190, 690))
+	for attempt in 100:
+		var valid := true
+		for actor in world.get_children():
+			if actor is FoundrySpire and result.distance_to(actor.position) < actor.radius + 30:
+				valid = false
+			if actor is GravityWell and result.distance_to(actor.position) < actor.horizon + 40:
+				valid = false
+			if actor is Leviathan and absf(result.y - actor.position.y) < 85 and absf(result.x - actor.position.x) < 190:
+				valid = false
+		if valid:
+			return result
+		result = Vector2(rng.randf_range(100, 1180), rng.randf_range(185, 685))
+	return Vector2(640, 620)
+
+
+func spawn_core(point: Vector2) -> void:
+	var core := SalvageCore.new()
+	core.position = _safe_core_position(point)
+	core.pilot = pilot
+	core.collected.connect(_on_core_collected)
+	world.add_child(core)
+
+
+func _build_deep_features() -> void:
+	if run.sector_index == 1:
+		for point in [Vector2(290, 280), Vector2(980, 270), Vector2(320, 600), Vector2(950, 600), Vector2(640, 210)]:
+			var spire := FoundrySpire.new()
+			spire.position = point
+			world.add_child(spire)
+	elif run.sector_index == 2:
+		var well := GravityWell.new()
+		well.position = Vector2(960, 330)
+		well.pilot = pilot
+		well.consumed.connect(func(_core: SalvageCore) -> void: spawn_core.call_deferred(Vector2(rng.randf_range(130, 650), 620)))
+		well.inverted.connect(func() -> void:
+			sound.play("inversion")
+			hud.notice("WELL INVERTED  /  1.5 seconds of outward flow", Color("78f5dd"), 1.5))
+		world.add_child(well)
+	elif run.sector_index == 3:
+		var boss := Leviathan.new()
+		boss.pilot = pilot
+		boss.core_shed.connect(func(point: Vector2) -> void: spawn_core.call_deferred(point))
+		boss.vent_cracked.connect(func(point: Vector2) -> void:
+			run.score += 400
+			sound.play("vent")
+			effects.callout(point, "+400 VENT CRACKED", Color("78f5dd"))
+			for i in 3:
+				spawn_core.call_deferred(point + Vector2((i - 1) * 40, 95)))
+		boss.silenced.connect(func() -> void:
+			run.score += 1500
+			hud.notice("LEVIATHAN SILENCED  /  +1500", Color("78f5dd"), 5)
+			effects.callout(boss.position, "LEVIATHAN SILENCED +1500", Color("78f5dd")))
+		boss.beam_warned.connect(func() -> void:
+			sound.play("beam")
+			hud.notice("BEAM INBOUND  /  Leave the amber lane", Color("ffc780"), 1.4))
+		world.add_child(boss)
