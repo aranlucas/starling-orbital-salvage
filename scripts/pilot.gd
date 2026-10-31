@@ -14,6 +14,12 @@ const DASH_COOLDOWN := 1.3
 const BOUNDS := Rect2(58, 148, 1164, 568)
 const SHIP_TEXTURE := preload("res://assets/art/ship.png")
 
+var frame := "starling"
+var hit_radius := 13.0
+var cargo_drag := 1.0
+var dash_duration := DASH_DURATION
+var external_force := Vector2.ZERO
+var gravity_velocity := Vector2.ZERO
 var health := 3
 var max_health := 3
 var speed_multiplier := 1.0
@@ -39,7 +45,7 @@ func _ready() -> void:
 	collision_mask = 0
 	var shape := CollisionShape2D.new()
 	var circle := CircleShape2D.new()
-	circle.radius = 13.0
+	circle.radius = hit_radius
 	shape.shape = circle
 	add_child(shape)
 
@@ -55,7 +61,7 @@ func _physics_process(delta: float) -> void:
 		if direction.length_squared() > 0.0:
 			heading = direction.normalized()
 		if Input.is_action_just_pressed("dash") and cooldown <= 0.0:
-			dash_remaining = DASH_DURATION
+			dash_remaining = dash_duration
 			cooldown = cooldown_max
 			dashed.emit()
 		if Input.is_action_just_pressed("pulse") and pulse_cooldown <= 0.0:
@@ -65,9 +71,11 @@ func _physics_process(delta: float) -> void:
 		if dash_remaining > 0.0:
 			velocity = heading * DASH_SPEED
 		else:
-			var load_factor := maxf(0.82, 1.0 - cargo_load * 0.018)
+			var load_factor := maxf(0.82, 1.0 - cargo_load * 0.018 * cargo_drag)
 			velocity = velocity.move_toward(direction * SPEED * speed_multiplier * load_factor, 1450.0 * delta)
-		position += velocity * delta
+		gravity_velocity = gravity_velocity * exp(-delta * 1.8) + external_force * delta
+		external_force = Vector2.ZERO
+		position += (velocity + gravity_velocity) * delta
 		position = position.clamp(BOUNDS.position, BOUNDS.end)
 	else:
 		velocity = Vector2.ZERO
@@ -77,14 +85,19 @@ func _physics_process(delta: float) -> void:
 	queue_redraw()
 
 
-func configure(upgrades: Dictionary, hull: int) -> void:
-	max_health = 3 + int(upgrades.hull)
+func configure(upgrades: Dictionary, hull: int, frame_id: String = "starling", plating: bool = false) -> void:
+	frame = frame_id
+	var stats: Dictionary = FlightProfile.FRAMES[frame]
+	max_health = int(stats.hull) + int(upgrades.get("hull", 0)) + (1 if plating else 0)
 	health = clampi(hull, 1, max_health)
-	speed_multiplier = 1.0 + float(upgrades.dash) * 0.08
-	cooldown_max = DASH_COOLDOWN - float(upgrades.dash) * 0.3
-	pulse_cooldown_max = 7.0 - float(upgrades.pulse)
-	pulse_radius = 200.0 + float(upgrades.pulse) * 65.0
-	magnet_radius = 45.0 + float(upgrades.magnet) * 65.0
+	speed_multiplier = float(stats.speed) + float(upgrades.get("dash", 0)) * 0.08
+	cooldown_max = maxf(0.25, float(stats.recharge) - float(upgrades.get("dash", 0)) * 0.3)
+	pulse_cooldown_max = 7.0 - float(upgrades.get("pulse", 0))
+	pulse_radius = 200.0 + float(upgrades.get("pulse", 0)) * 65.0
+	magnet_radius = float(stats.magnet) + float(upgrades.get("magnet", 0)) * 65.0
+	hit_radius = float(stats.radius)
+	cargo_drag = 0.0 if int(upgrades.get("ballast", 0)) > 0 else float(stats.drag)
+	dash_duration = DASH_DURATION + 0.1 * int(upgrades.get("ram", 0))
 
 
 func hit() -> void:

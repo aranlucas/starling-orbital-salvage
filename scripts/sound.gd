@@ -22,6 +22,10 @@ func _ready() -> void:
 	cues["dock"] = _tone(480, 960, 0.32)
 	cues["upgrade"] = _tone(420, 1280, 0.38)
 	cues["shatter"] = _tone(180, 65, 0.14)
+	cues["vent"] = _tone(90, 880, 0.3)
+	cues["beam"] = _tone(740, 260, 0.5)
+	cues["inversion"] = _tone(70, 1040, 0.65)
+	cues["purchase"] = _tone(520, 1560, 0.3)
 	cues["warning"] = _tone(440, 330, 0.18)
 
 
