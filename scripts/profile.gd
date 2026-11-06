@@ -50,30 +50,49 @@ func load_profile() -> void:
 	var file := ConfigFile.new()
 	if file.load(path) != OK:
 		return
-	best = maxi(0, int(file.get_value("mission", "best", 0)))
-	victories = maxi(0, int(file.get_value("mission", "victories", 0)))
-	runs = maxi(victories, int(file.get_value("mission", "runs", 0)))
+	best = maxi(0, _saved_count(file.get_value("mission", "best", 0)))
+	victories = maxi(0, _saved_count(file.get_value("mission", "victories", 0)))
+	runs = maxi(victories, _saved_count(file.get_value("mission", "runs", 0)))
 	muted = bool(file.get_value("settings", "muted", false))
 	reduced_motion = bool(file.get_value("settings", "reduced_motion", false))
 	view_3d = bool(file.get_value("settings", "view_3d", false))
 	invert_y = bool(file.get_value("settings", "invert_y", false))
-	scrap = maxi(0, int(file.get_value("workshop", "scrap", 0)))
+	scrap = maxi(0, _saved_count(file.get_value("workshop", "scrap", 0)))
 	owned.clear()
-	for id in file.get_value("workshop", "owned", []):
-		if ITEMS.has(id) and not id in owned:
+	var saved_owned: Variant = file.get_value("workshop", "owned", [])
+	if not saved_owned is Array and not saved_owned is PackedStringArray:
+		saved_owned = []
+	for id in saved_owned:
+		if id is String and ITEMS.has(id) and not id in owned:
 			owned.append(id)
 	# Every legacy victory was on Survey; honor the free Charts unlock too.
 	if victories > 0 and not owns("charts"):
 		owned.append("charts")
-	route_records = file.get_value("mission", "routes", {})
-	if not route_records.has("survey"):
-		route_records.survey = {"best": best, "rank": "—", "runs": runs, "victories": victories}
+	var saved_routes: Variant = file.get_value("mission", "routes", {})
+	route_records = {}
+	for route in ["survey", "deep"]:
+		var fallback := {"best": best, "rank": "—", "runs": runs, "victories": victories} if route == "survey" else {"best": 0, "rank": "—", "runs": 0, "victories": 0}
+		var record: Variant = saved_routes.get(route, {}) if saved_routes is Dictionary else {}
+		if not record is Dictionary:
+			record = {}
+		var wins := _saved_count(record.get("victories", fallback.victories), fallback.victories)
+		var rank: Variant = record.get("rank", "—")
+		route_records[route] = {
+			"best": _saved_count(record.get("best", fallback.best), fallback.best),
+			"rank": rank if rank is String and rank in ["—", "S", "A", "B", "C"] else "—",
+			"runs": maxi(wins, _saved_count(record.get("runs", fallback.runs), fallback.runs)),
+			"victories": wins,
+		}
 	selected_route = str(file.get_value("settings", "route", "survey"))
 	selected_frame = str(file.get_value("settings", "frame", "starling"))
 	if selected_route != "deep" or not owns("charts"):
 		selected_route = "survey"
 	if not FRAMES.has(selected_frame) or (selected_frame != "starling" and not owns(selected_frame)):
 		selected_frame = "starling"
+
+# ConfigFile values are Variants even when the file parses successfully.
+func _saved_count(value: Variant, fallback: int = 0) -> int:
+	return maxi(0, value) if value is int else fallback
 
 func owns(id: String) -> bool:
 	return id in owned

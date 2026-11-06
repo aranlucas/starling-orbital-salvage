@@ -31,8 +31,47 @@ jobs:
             --version "$GODOT_VERSION" \
             --destination "$RUNNER_TEMP/godot" \
             --cache "$RUNNER_TEMP/godot-downloads"
+      - name: Prove profile regression on pre-fix implementation
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: 738f4f0a6fdf1621f31a25a8e673e345b781cb33
+        run: |
+          mkdir -p "$RUNNER_TEMP/profile-baseline"
+          git archive "$BASE_SHA" | tar -x -C "$RUNNER_TEMP/profile-baseline"
+          cp tests/profile_reliability_test.gd "$RUNNER_TEMP/profile-baseline/tests/"
+          Godot --headless --path "$RUNNER_TEMP/profile-baseline" --editor --quit > "$RUNNER_TEMP/profile-import.log" 2>&1
+          python3 - <<'PYCODE'
+          import os, pathlib, subprocess
+          project = pathlib.Path(os.environ["RUNNER_TEMP"]) / "profile-baseline"
+          try:
+              result = subprocess.run(["Godot", "--headless", "--path", str(project), "--script", "tests/profile_reliability_test.gd"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30)
+              output = result.stdout.decode(errors="replace")
+          except subprocess.TimeoutExpired as error:
+              output = (error.stdout or b"").decode(errors="replace")
+          (project.parent / "profile-baseline.log").write_text(output)
+          print(output)
+          # The defective loader can abort the SceneTree script before quit().
+          # Require the specific loader error, never accept timeout alone.
+          if "SCRIPT ERROR:" not in output or "profile.gd:" not in output:
+              raise SystemExit("Expected pre-fix profile loader script error")
+          PYCODE
       - name: Check gameplay
-        run: python3 tools/check_gameplay.py
+        run: |
+          set -o pipefail
+          python3 tools/check_gameplay.py 2>&1 | tee "$RUNNER_TEMP/gameplay.log"
+      - name: Verify universal export and standalone startup
+        run: python3 tools/build_macos_release.py v0.2.0-audit
+      - name: Preserve audit evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: reliability-evidence
+          path: |
+            ${{ runner.temp }}/profile-*.log
+            ${{ runner.temp }}/gameplay.log
+            builds/release/*.log
+          if-no-files-found: warn
+          retention-days: 7
       - name: Diagnose baseline if gameplay fails
         if: failure() && github.event_name == 'pull_request'
         env:
@@ -40,4 +79,4 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/starling-baseline"
           git archive "$BASE_SHA" | tar -x -C "$RUNNER_TEMP/starling-baseline"
-          python3 tools/check_gameplay.py --project "$RUNNER_TEMP/starling-baseline"
+          python3 "$RUNNER_TEMP/starling-baseline/tools/check_gameplay.py" --project "$RUNNER_TEMP/starling-baseline"
