@@ -23,9 +23,7 @@ func label_at(point: Vector2, text: String, color: Color, size_px: int = 11) -> 
 func marker(point: Vector3, text: String, color: Color, force_label: bool = false) -> void:
 	var camera := flight.chase.camera
 	var screen := camera.unproject_position(point)
-	var behind := camera.is_position_behind(point)
-	var bounds := Rect2(55, 200, 1170, 355)
-	var on_screen := not behind and bounds.has_point(screen)
+	var on_screen := not is_offscreen(point)
 	if not on_screen:
 		var relative := camera.to_local(point)
 		var direction := Vector2(relative.x, -relative.y)
@@ -64,7 +62,6 @@ func _draw() -> void:
 	edge_count = 0
 	behind_warning = false
 	occupied_markers.clear()
-	# Thin nose reticle leaves the ship and forward corridor clear.
 	draw_arc(Vector2(640, 350), 5, 0, TAU, 20, Color(MINT, 0.5), 1, true)
 	draw_line(Vector2(629, 350), Vector2(633, 350), Color(MINT, 0.5))
 	draw_line(Vector2(647, 350), Vector2(651, 350), Color(MINT, 0.5))
@@ -136,18 +133,8 @@ func _draw_radar() -> void:
 	draw_line(RADAR - Vector2(139, 0), RADAR + Vector2(139, 0), Color("294550"))
 	draw_line(RADAR - Vector2(0, 44), RADAR + Vector2(0, 44), Color("294550"))
 	label_at(RADAR + Vector2(-70, 63), "SCANNER  /  ±200 m", Color("89a6b3"), 10)
-	radar_blip(Vector3.ZERO, MINT, 4)
-	for actor in flight.actors.get_children():
-		if actor is FlightCore and not actor.taken:
-			radar_blip(actor.position, GOLD, 2.5)
-		elif actor is FlightRock:
-			radar_blip(actor.position, Color("758693"), 2)
-		elif actor is FlightSentry:
-			radar_blip(actor.position, RED, 3)
-		elif actor is FlightWell:
-			radar_blip(actor.position, Color("b1a0ff"), 5)
-		elif actor is FlightLeviathan:
-			radar_blip(actor.position, RED, 6)
+	for contact in _radar_entries():
+		radar_blip(contact.point, contact.color, contact.radius)
 	draw_colored_polygon(PackedVector2Array([RADAR + Vector2(0, -5), RADAR + Vector2(-4, 4), RADAR + Vector2(4, 4)]), MINT)
 func radar_blip(point: Vector3, color: Color, radius: float) -> void:
 	var offset := (point - flight.pilot.position).rotated(Vector3.UP, -flight.pilot.yaw)
@@ -159,11 +146,25 @@ func radar_blip(point: Vector3, color: Color, radius: float) -> void:
 	draw_circle(tip, radius, color)
 	blip_count += 1
 
-func radar_contacts() -> Array[Vector3]:
-	var contacts: Array[Vector3] = [Vector3.ZERO]
+func _radar_entries() -> Array[Dictionary]:
+	var contacts: Array[Dictionary] = [{"point": Vector3.ZERO, "color": MINT, "radius": 4.0}]
 	for actor in flight.actors.get_children():
-		if (actor is FlightCore and not actor.taken) or actor is FlightRock or actor is FlightSentry or actor is FlightWell or actor is FlightLeviathan:
-			contacts.append(actor.position)
+		if actor is FlightCore and not actor.taken:
+			contacts.append({"point": actor.position, "color": GOLD, "radius": 2.5})
+		elif actor is FlightRock:
+			contacts.append({"point": actor.position, "color": Color("758693"), "radius": 2.0})
+		elif actor is FlightSentry:
+			contacts.append({"point": actor.position, "color": RED, "radius": 3.0})
+		elif actor is FlightWell:
+			contacts.append({"point": actor.position, "color": Color("b1a0ff"), "radius": 5.0})
+		elif actor is FlightLeviathan:
+			contacts.append({"point": actor.position, "color": RED, "radius": 6.0})
+	return contacts
+
+func radar_contacts() -> Array[Vector3]:
+	var contacts: Array[Vector3] = []
+	for contact in _radar_entries():
+		contacts.append(contact.point)
 	return contacts
 
 func is_offscreen(point: Vector3) -> bool:

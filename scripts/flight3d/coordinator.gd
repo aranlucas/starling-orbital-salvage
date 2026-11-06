@@ -67,7 +67,7 @@ func build() -> void:
 	pulse_ring = pulse_rings[0]
 	_build_features()
 	var sector: Dictionary = game.run.sector()
-	for i in (6 if game.run.sector_index == 3 else int(sector.quota)):
+	for i in int(sector.get("loose_cores", sector.quota)):
 		spawn_core(safe_point())
 	for i in int(sector.rocks):
 		var rock := FlightRock.new()
@@ -91,12 +91,12 @@ func build() -> void:
 		actors.add_child(wing)
 		wing._physics_process(0)
 func _build_features() -> void:
-	if game.run.sector_index == 1:
+	if game.run.sector().feature == "spires":
 		for point in [Vector3(-65, 0, -65), Vector3(65, 0, -65), Vector3(-85, 0, 65), Vector3(85, 0, 65), Vector3(0, 0, -130)]:
 			var spire := FlightSpire.new()
 			spire.position = point
 			actors.add_child(spire)
-	elif game.run.sector_index == 2:
+	elif game.run.sector().feature == "well":
 		var well := FlightWell.new()
 		well.pilot = pilot
 		well.position = Vector3(80, 0, -25)
@@ -112,7 +112,7 @@ func _build_features() -> void:
 			game.hud.notice("METEOR INBOUND / Leave the amber cylinder", Color("ffc780"), 1.4))
 		lane.deflected.connect(shatter)
 		actors.add_child(lane)
-	elif game.run.sector_index == 3:
+	elif game.run.sector().feature == "leviathan":
 		boss = FlightLeviathan.new()
 		boss.pilot = pilot
 		boss.core_shed.connect(func(point: Vector3) -> void: spawn_core.call_deferred(point))

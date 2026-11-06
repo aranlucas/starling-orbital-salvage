@@ -194,7 +194,8 @@ func _run() -> void:
 	_check(Input.mouse_mode == Input.MOUSE_MODE_VISIBLE, "Results release mouse capture")
 	await _capture("victory")
 	await _test_cards()
-	await _measure_performance()
+	if "--benchmark" in OS.get_cmdline_user_args():
+		await _measure_performance()
 	game.return_to_roost()
 	_check(Input.mouse_mode == Input.MOUSE_MODE_VISIBLE and game.presenter.visible and not flight.visible, "The Roost restores its presenter and visible mouse")
 	game.profile.selected_route = "survey"
