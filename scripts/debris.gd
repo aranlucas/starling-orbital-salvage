@@ -10,7 +10,7 @@ var velocity := Vector2.ZERO
 var radius := 23.0
 var spin := 0.2
 var active := false
-var safe_center := Vector2(640, 431)
+var safe_center := SurveySpace.DOCK
 var cruise_speed := 60.0
 
 
@@ -30,7 +30,6 @@ func _physics_process(delta: float) -> void:
 		return
 	position += velocity * delta
 	velocity = velocity.move_toward(velocity.normalized() * cruise_speed, 130 * delta)
-	# Keep the dock safe instead of letting a rock camp on the only exit.
 	var from_dock := position - safe_center
 	if from_dock.length() < 88 + radius:
 		position = safe_center + from_dock.normalized() * (89 + radius)
@@ -42,7 +41,6 @@ func _physics_process(delta: float) -> void:
 	if position.y < 140 + radius or position.y > 726 - radius:
 		velocity.y = -velocity.y
 		position.y = clampf(position.y, 140 + radius, 726 - radius)
-	# Poll overlaps so a ship cannot stay inside debris after its shield expires.
 	for area in get_overlapping_areas():
 		if area is Pilot:
 			if area.dash_remaining > 0:

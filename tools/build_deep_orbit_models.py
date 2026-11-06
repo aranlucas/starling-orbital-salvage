@@ -212,7 +212,6 @@ for x in (-.85,.85): cube('Launch rail',(x,8.9,.10),(.18,3.0,.25),orange,rig)
 
 meteor=asset('meteor')
 sphere('Molten interior',(0,0,0),(.71,.71,.71),engine,meteor)
-# Separate dark plates leave a network of glowing fissures between them.
 for i in range(18):
     z = rng.uniform(-.9,.9); angle = rng.uniform(0,math.tau); q=math.sqrt(1-z*z)
     p=Vector((q*math.cos(angle),q*math.sin(angle),z))
@@ -251,7 +250,6 @@ for i in range(16):
 
 lev=asset('leviathan')
 extrude('Armored keel',[(-3.3,-14),(3.3,-14),(3.8,-9),(3.6,8),(2.5,13),(0,15),(-2.5,13),(-3.6,8),(-3.8,-9)],-.9,.65,graphite,lev)
-# Cargo bays are open: raised coamings surround dark floors and irregular ore.
 for y in (-9,-3,3,9):
     cube('Cargo bay floor',(0,y,.68),(4.9,4.9,.18),dark,lev)
     for side in (-1,1):
@@ -265,7 +263,6 @@ for y in (-9,-3,3,9):
     for j in range(10):
         x=rng.choice((-1,1))*rng.uniform(1.0,2.1); yy=y+rng.uniform(-1.9,1.9)
         rocky('Spilled ore',(x,yy,.85),(rng.uniform(.25,.48),rng.uniform(.3,.55),rng.uniform(.18,.35)),lev,1000+j+int(y*10))
-# Spine and target housings rise above the recessed bays.
 cube('Reactor spine',(0,0,1.02),(1.35,27,.6),graphite,lev,.10)
 for y in range(-13,14):
     cube('Spine rib',(0,y,1.37),(1.2,.14,.12),ivory,lev,.02)
@@ -389,7 +386,6 @@ for target,name in assets:
         scene.render.filepath=str(ART/(name+'.png'))
         bpy.ops.render.render(write_still=True)
 
-# Close chase-camera study before arranging the library.
 for model,_ in assets:
     for obj in [model,*model.children_recursive]: obj.hide_render=model != lev
 cam.location=(4,-16,4.5); cam.rotation_euler=(Vector((0,-3,1.5))-cam.location).to_track_quat('-Z','Y').to_euler()
@@ -412,15 +408,12 @@ cam_data.type='PERSP'; cam_data.lens=35
 scene.render.resolution_x=1800; scene.render.resolution_y=900
 scene.render.film_transparent=False
 bg.inputs[0].default_value=(.018,.032,.05,1); bg.inputs[1].default_value=.5
-# Large softboxes illuminate the entire library.
 light('Lineup key',(-10,-8,25),(1,.86,.7),3500,18)
 light('Lineup rim',(12,12,18),(.45,1,.87),4000,16)
 scene.render.filepath=str(ART/'deep_orbit_lineup.png')
 bpy.ops.wm.save_as_mainfile(filepath=str(MODELS/'deep_orbit_assets.blend'))
 bpy.ops.render.render(write_still=True)
 
-# Equirectangular sky, rendered from inside an emissive procedural world.
-# The direction vector supplies a quiet nebula and sparse point stars.
 for model,_ in assets:
     for obj in [model,*model.children_recursive]: obj.hide_render=True
 world=scene.world; nodes=world.node_tree.nodes; links=world.node_tree.links
@@ -437,7 +430,6 @@ add=nodes.new('ShaderNodeMixRGB'); add.blend_type='ADD'; add.inputs[0].default_v
 bright=nodes.new('ShaderNodeTexVoronoi'); bright.inputs['Scale'].default_value=12; links.new(tex.outputs['Normal'],bright.inputs['Vector'])
 bright_ramp=nodes.new('ShaderNodeValToRGB'); bright_ramp.color_ramp.elements[0].position=.01; bright_ramp.color_ramp.elements[0].color=(3,2.4,1.6,1); bright_ramp.color_ramp.elements[1].position=.045; bright_ramp.color_ramp.elements[1].color=(0,0,0,1); links.new(bright.outputs['Distance'],bright_ramp.inputs[0])
 bright_add=nodes.new('ShaderNodeMixRGB'); bright_add.blend_type='ADD'; bright_add.inputs[0].default_value=1; links.new(add.outputs[0],bright_add.inputs[1]); links.new(bright_ramp.outputs[0],bright_add.inputs[2]); links.new(bright_add.outputs[0],background.inputs[0]); background.inputs[1].default_value=1
-# Procedural spherical gas giant, shaded by a distant sun and rim emission.
 planetmat=bpy.data.materials.new('Gas giant banded atmosphere'); planetmat.use_nodes=True
 n=planetmat.node_tree.nodes; l=planetmat.node_tree.links; n.clear()
 outp=n.new('ShaderNodeOutputMaterial'); bs=n.new('ShaderNodeBsdfPrincipled'); l.new(bs.outputs[0],outp.inputs['Surface'])

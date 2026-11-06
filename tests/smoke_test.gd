@@ -262,7 +262,7 @@ func _collect_all() -> void:
 func _dock() -> void:
 	game.pilot.velocity = Vector2.ZERO
 	game.pilot.position = game.BEACON
-	await create_timer(game.DOCK_SECONDS + 0.08).timeout
+	await create_timer(game.run.bank_seconds() + 0.08).timeout
 
 
 func _physics_steps() -> void:

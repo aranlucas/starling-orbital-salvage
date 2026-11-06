@@ -1,6 +1,5 @@
 class_name SalvageCore
 extends Area2D
-## An energy core is removed before emitting, so it can only be collected once.
 
 signal collected(core: SalvageCore)
 

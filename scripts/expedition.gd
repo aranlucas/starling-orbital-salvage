@@ -8,10 +8,10 @@ const SECTORS := [
 	{"name": "THE STORMFRONT", "subtitle": "One last haul. Watch the incoming meteor lanes.", "quota": 12, "seconds": 70.0, "rocks": 9, "speed": 1.1, "drones": 2, "storm": true, "color": Color("f3b77b")},
 ]
 const DEEP_SECTORS := [
-	{"name": "THE SHELF", "subtitle": "At the lip of a deeper orbit.", "quota": 9, "seconds": 65.0, "rocks": 7, "speed": 0.85, "drones": 1, "storm": false, "color": Color("78f5dd")},
-	{"name": "FOUNDRY SPIRES", "subtitle": "Slide around the silent refineries.", "quota": 10, "seconds": 70.0, "rocks": 6, "speed": 1.0, "drones": 2, "storm": false, "color": Color("ffb878")},
-	{"name": "THE WELL", "subtitle": "Pulse to reverse the pull.", "quota": 11, "seconds": 70.0, "rocks": 7, "speed": 1.0, "drones": 1, "storm": true, "color": Color("b1a0ff")},
-	{"name": "THE LEVIATHAN", "subtitle": "Crack the vents. Bring the light home.", "quota": 12, "seconds": 80.0, "rocks": 4, "speed": 0.85, "drones": 0, "storm": false, "color": Color("ffaaa0")},
+	{"feature": "", "name": "THE SHELF", "subtitle": "At the lip of a deeper orbit.", "quota": 9, "seconds": 65.0, "rocks": 7, "speed": 0.85, "drones": 1, "storm": false, "color": Color("78f5dd")},
+	{"feature": "spires", "name": "FOUNDRY SPIRES", "subtitle": "Slide around the silent refineries.", "quota": 10, "seconds": 70.0, "rocks": 6, "speed": 1.0, "drones": 2, "storm": false, "color": Color("ffb878")},
+	{"feature": "well", "name": "THE WELL", "subtitle": "Pulse to reverse the pull.", "quota": 11, "seconds": 70.0, "rocks": 7, "speed": 1.0, "drones": 1, "storm": true, "color": Color("b1a0ff")},
+	{"feature": "leviathan", "loose_cores": 6, "name": "THE LEVIATHAN", "subtitle": "Crack the vents. Bring the light home.", "quota": 12, "seconds": 80.0, "rocks": 4, "speed": 0.85, "drones": 0, "storm": false, "color": Color("ffaaa0")},
 ]
 const UPGRADES := {
 	"magnet": {"name": "TRACTOR ARRAY", "tag": "SALVAGE", "description": "Pull cores in from much farther away.\nKeep your pickup chain alive.", "stat": "+65 pickup range per level", "color": Color("f3c77b")},
@@ -143,7 +143,6 @@ func upgrade_offers() -> Array[String]:
 		var index := rng.randi_range(0, pool.size() - 1)
 		cached_offers.append(pool[index])
 		pool.remove_at(index)
-	# Shuffle offers with the same expedition RNG (never the global RNG).
 	for i in range(cached_offers.size() - 1, 0, -1):
 		var j := rng.randi_range(0, i)
 		var value := cached_offers[i]

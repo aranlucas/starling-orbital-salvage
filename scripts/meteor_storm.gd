@@ -1,6 +1,5 @@
 class_name MeteorStorm
 extends Node2D
-## A readable environmental hazard: warn first, then cross the marked lane.
 
 signal warned
 signal deflected(point: Vector2)

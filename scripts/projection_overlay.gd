@@ -33,8 +33,8 @@ func _draw() -> void:
 			occupied.append(bounds)
 			draw_string(ThemeDB.fallback_font, bounds.position + Vector2(0, 17), callout.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, callout.color)
 	if presenter.bank_progress > 0:
-		draw_arc(presenter.project(Vector2(640, 431)), 36, -PI / 2, -PI / 2 + TAU * presenter.bank_progress, 64, Color("78f5dd"), 4, true)
-	var dock_point := presenter.project(Vector2(640, 431))
+		draw_arc(presenter.project(SurveySpace.DOCK), 36, -PI / 2, -PI / 2 + TAU * presenter.bank_progress, 64, Color("78f5dd"), 4, true)
+	var dock_point := presenter.project(SurveySpace.DOCK)
 	draw_string(ThemeDB.fallback_font, dock_point + Vector2(-32, 48), "SAFE DOCK", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("78f5dd"))
 	if presenter.navigation != Vector2.ZERO and is_instance_valid(presenter.pilot):
 		var start := presenter.project(presenter.pilot.position)

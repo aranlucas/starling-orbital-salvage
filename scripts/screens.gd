@@ -15,7 +15,6 @@ var hub_root: Control
 var hub_section := "launch"
 var workshop_index := 0
 var workshop_buttons: Array[Button] = []
-var artwork: TextureRect
 var shade: ColorRect
 var panel: Panel
 var eyebrow: Label
@@ -32,12 +31,6 @@ var motion_button: Button
 
 func _ready() -> void:
 	size = Vector2(1280, 800)
-	artwork = TextureRect.new()
-	artwork.texture = preload("res://assets/art/menu_backdrop.png")
-	artwork.size = size
-	artwork.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	artwork.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	add_child(artwork)
 	shade = ColorRect.new()
 	shade.size = size
 	add_child(shade)
@@ -75,7 +68,6 @@ func present(state: String, run: Expedition, profile: FlightProfile, reason: Str
 	visible = state != "running"
 	if not visible:
 		return
-	artwork.visible = false
 	shade.color = Color(0.01, 0.025, 0.04, 0.0 if state == "menu" else 0.85)
 	panel.visible = state != "upgrade"
 	upgrades_root.visible = state == "upgrade"
@@ -166,13 +158,9 @@ func _build_upgrades(run: Expedition) -> void:
 		UI.label(card, ("+10m pickup range per level" if id == "magnet" else "+12m pulse radius · −1s recharge") if run.route == "deep" and id in ["magnet", "pulse"] else data.stat, Vector2(24, 194), 12, data.color)
 		var level := int(run.upgrades[id]) + 1
 		var install := UI.button(card, "%d   INSTALL LEVEL %d     →" % [i + 1, level], Rect2(24, 247, 308, 42), data.color)
-		install.pressed.connect(_select_upgrade.bind(id))
+		install.pressed.connect(upgrade_selected.emit.bind(id))
 	UI.label(upgrades_root, "NEXT  /  " + run.sectors()[run.sector_index + 1].name, Vector2(80, 646), 12, UI.CYAN)
 	UI.label(upgrades_root, "PRESS 1, 2 OR 3 TO INSTALL AND JUMP", Vector2(880, 646), 11, UI.MUTED)
-
-
-func _select_upgrade(id: String) -> void:
-	upgrade_selected.emit(id)
 
 
 func _build_hub(profile: FlightProfile) -> void:

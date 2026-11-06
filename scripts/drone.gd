@@ -1,6 +1,5 @@
 class_name SentryDrone
 extends Area2D
-## Patrol, visibly lock a direction, then lunge. Dash through it to destroy it.
 
 signal shattered(point: Vector2)
 
@@ -49,8 +48,8 @@ func _physics_process(delta: float) -> void:
 			windup = 1.1
 			cycle = 3.8
 	position = position.clamp(Vector2(90, 180), Vector2(1190, 688))
-	if position.distance_to(Vector2(640, 431)) < 110:
-		position = Vector2(640, 431) + (position - Vector2(640, 431)).normalized() * 111
+	if position.distance_to(SurveySpace.DOCK) < 110:
+		position = SurveySpace.DOCK + (position - SurveySpace.DOCK).normalized() * 111
 	for area in get_overlapping_areas():
 		if area is Pilot and stunned <= 0:
 			if area.dash_remaining > 0:

@@ -1,0 +1,43 @@
+name: Gameplay
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gameplay-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: '4.7.2'
+
+jobs:
+  gameplay:
+    name: Survey and Deep Orbit integration
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Install verified Godot
+        run: |
+          python3 tools/install_godot.py \
+            --version "$GODOT_VERSION" \
+            --destination "$RUNNER_TEMP/godot" \
+            --cache "$RUNNER_TEMP/godot-downloads"
+      - name: Check gameplay
+        run: python3 tools/check_gameplay.py
+      - name: Diagnose baseline if gameplay fails
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/starling-baseline"
+          git archive "$BASE_SHA" | tar -x -C "$RUNNER_TEMP/starling-baseline"
+          python3 tools/check_gameplay.py --project "$RUNNER_TEMP/starling-baseline"

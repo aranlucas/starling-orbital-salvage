@@ -9,8 +9,7 @@ const StormScript := preload("res://scripts/meteor_storm.gd")
 const ArenaScript := preload("res://scripts/arena.gd")
 const HudScript := preload("res://scripts/hud.gd")
 const SoundScript := preload("res://scripts/sound.gd")
-const BEACON := Vector2(640, 431)
-const DOCK_SECONDS := 0.7
+const BEACON := SurveySpace.DOCK
 
 var presenter: OrbitPresenter
 var state := "menu"
@@ -169,7 +168,7 @@ func _spawn_debris() -> void:
 func start_mission() -> void:
 	run = Expedition.new()
 	run.configure(profile, rng.randi())
-	carried_hull = int(FlightProfile.FRAMES[run.frame].hull) + (1 if run.plating else 0) + int(run.upgrades.hull)
+	carried_hull = ShipBuild.maximum_hull(run.upgrades, run.frame, run.plating)
 	first_pickup = true
 	_launch_sector()
 
@@ -217,7 +216,7 @@ func _process(delta: float) -> void:
 
 
 func _update_dock(delta: float) -> void:
-	if run.cargo > 0 and pilot.position.distance_to(BEACON) < 54:
+	if run.cargo > 0 and pilot.position.distance_to(BEACON) < SurveySpace.DOCK_RADIUS:
 		dock_progress = minf(1, dock_progress + delta / run.bank_seconds())
 		if dock_progress >= 1:
 			var count := run.bank_cargo()
@@ -247,7 +246,7 @@ func _complete_sector() -> void:
 func choose_upgrade(id: String) -> void:
 	if state != "upgrade" or not run.advance(id):
 		return
-	carried_hull = mini(carried_hull + 1 + (1 if id == "hull" else 0), int(FlightProfile.FRAMES[run.frame].hull) + (1 if run.plating else 0) + int(run.upgrades.hull))
+	carried_hull = mini(carried_hull + 1 + (1 if id == "hull" else 0), ShipBuild.maximum_hull(run.upgrades, run.frame, run.plating))
 	sound.play("upgrade")
 	_launch_sector()
 
@@ -440,4 +439,3 @@ func _update_view() -> void:
 	if state != "running":
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	hud.notice_panel.position.y = 140 if run.route == "deep" and state != "menu" else (690 if presenter.visible else 146)
-	# Effects have their own projection overlay in the presenter.

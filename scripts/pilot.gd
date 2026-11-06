@@ -1,6 +1,5 @@
 class_name Pilot
 extends Area2D
-## Responsive acceleration, a short invulnerable dash, and a three-hit hull.
 
 signal damaged
 signal destroyed
@@ -88,15 +87,16 @@ func _physics_process(delta: float) -> void:
 func configure(upgrades: Dictionary, hull: int, frame_id: String = "starling", plating: bool = false) -> void:
 	frame = frame_id
 	var stats: Dictionary = FlightProfile.FRAMES[frame]
-	max_health = int(stats.hull) + int(upgrades.get("hull", 0)) + (1 if plating else 0)
+	var build := ShipBuild.stats(upgrades, frame, plating)
+	max_health = build.max_health
+	speed_multiplier = build.speed_multiplier
+	cooldown_max = build.cooldown_max
+	pulse_cooldown_max = build.pulse_cooldown_max
+	cargo_drag = build.cargo_drag
 	health = clampi(hull, 1, max_health)
-	speed_multiplier = float(stats.speed) + float(upgrades.get("dash", 0)) * 0.08
-	cooldown_max = maxf(0.25, float(stats.recharge) - float(upgrades.get("dash", 0)) * 0.3)
-	pulse_cooldown_max = 7.0 - float(upgrades.get("pulse", 0))
 	pulse_radius = 200.0 + float(upgrades.get("pulse", 0)) * 65.0
 	magnet_radius = float(stats.magnet) + float(upgrades.get("magnet", 0)) * 65.0
 	hit_radius = float(stats.radius)
-	cargo_drag = 0.0 if int(upgrades.get("ballast", 0)) > 0 else float(stats.drag)
 	dash_duration = DASH_DURATION + 0.1 * int(upgrades.get("ram", 0))
 
 

@@ -229,11 +229,15 @@ regenerate the art; Blender is never needed to play.
 
 ## Verification
 
+Pull requests run both headless suites in CI using `tools/check_gameplay.py`,
+which also rejects Godot script errors even if the engine exits successfully.
+Release validation uses the same runner.
+
 ```sh
 godot --headless --path . --editor --quit
 godot --headless --path . --script tests/smoke_test.gd
 godot --headless --path . --script tests/flight3d_test.gd
-# Same checks plus native screenshots (3D also measures native frame time):
+# Same checks plus native screenshots:
 godot --path . --script tests/smoke_test.gd
 godot --path . --script tests/flight3d_test.gd
 ```
@@ -251,8 +255,10 @@ dummy display has no OS cursor; native checks verify actual mouse mode and drawi
 
 Native captures write `/tmp/starling-v2-*.png` for Survey/meta and
 `/tmp/starling-flight3d-*.png` for Shelf, Spires, Well, Leviathan, dash, close pass,
-beam from behind, radar and victory. The 3D native suite disables VSync for its
-300-frame measurement at 1280×800 and reports mean FPS and p95 frame time.
+beam from behind, radar and victory. The optional 3D benchmark disables VSync for its
+300-frame measurement at 1280×800 and reports mean FPS and p95 frame time
+only when explicitly invoked with `-- --benchmark`. Normal integration checks
+do not enforce a hardware-dependent frame-time budget.
 
 For a manual native session with a separate profile:
 

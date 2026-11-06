@@ -13,7 +13,6 @@ var beam_lane: FlightLane
 var vents: Array[Area3D] = []
 var model: Node3D
 func _ready() -> void:
-	# Match the patrol at phase zero before the coordinator places loose cores.
 	position = Vector3(0, 26, -72)
 	collision_layer = 0
 	collision_mask = 1
@@ -78,7 +77,6 @@ func _physics_process(delta: float) -> void:
 		if body == pilot:
 			pilot.hit(position)
 			var normal := (pilot.position - position) / Vector3(11, 6, 42.5)
-			# Push to nearest face, preserving a clear path to top-hull vents.
 			var local := to_local(pilot.position)
 			local.y = 8.5 if normal.y >= 0 else -8.5
 			pilot.position = to_global(local)

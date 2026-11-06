@@ -61,9 +61,7 @@ jobs:
 
       - name: Import project and run gameplay integration checks
         timeout-minutes: 3
-        run: |
-          Godot --headless --path . --editor --quit
-          Godot --headless --path . --script tests/smoke_test.gd
+        run: python3 tools/check_gameplay.py
 
       - name: Export, package, and verify standalone app
         timeout-minutes: 10

@@ -120,7 +120,8 @@ func _ready() -> void:
 	add_child(overlay)
 
 static func map_position(point: Vector2, height: float = 0.0) -> Vector3:
-	return Vector3((point.x - 640) / SCALE, height, (point.y - 431) / SCALE)
+	var offset := (point - SurveySpace.DOCK) / SCALE
+	return Vector3(offset.x, height, offset.y)
 
 func project(point: Vector2, height: float = 0.3) -> Vector2:
 	return camera.unproject_position(map_position(point, height))
@@ -223,7 +224,6 @@ func _process(delta: float) -> void:
 		camera.fov = 40
 		camera.position = Vector3(15, 12, 21)
 		camera.look_at(Vector3(0, 0, 0))
-		# Shift the station into the right half of the screen.
 		camera.h_offset = -6.6
 		station.rotation.y = 0 if reduced_motion else sin(elapsed * 0.12) * 0.12
 		for module in ["Charts", "Kestrel", "Albatross", "Fabricator", "Plating", "Broker", "Rig"]:

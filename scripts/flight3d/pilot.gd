@@ -42,15 +42,16 @@ var boundary_warning := false
 func configure(upgrades: Dictionary, hull: int, frame_id: String, plating: bool) -> void:
 	frame = frame_id
 	var stats: Dictionary = FlightProfile.FRAMES[frame]
-	max_health = int(stats.hull) + int(upgrades.hull) + int(plating)
+	var build := ShipBuild.stats(upgrades, frame, plating)
+	max_health = build.max_health
+	speed_multiplier = build.speed_multiplier
+	cooldown_max = build.cooldown_max
+	pulse_cooldown_max = build.pulse_cooldown_max
+	cargo_drag = build.cargo_drag
 	health = clampi(hull, 1, max_health)
-	speed_multiplier = float(stats.speed) + 0.08 * int(upgrades.dash)
-	cargo_drag = 0.0 if int(upgrades.ballast) > 0 else float(stats.drag)
 	hit_radius = float(stats.radius) / 10.0
 	magnet_radius = float(stats.magnet) / 6.5 + 10.0 * int(upgrades.magnet)
 	pulse_radius = 32.0 + 12.0 * int(upgrades.pulse)
-	cooldown_max = maxf(0.25, float(stats.recharge) - 0.3 * int(upgrades.dash))
-	pulse_cooldown_max = 7.0 - int(upgrades.pulse)
 	dash_duration = 0.25 + 0.1 * int(upgrades.ram)
 
 func _ready() -> void:
@@ -104,7 +105,6 @@ func _physics_process(delta: float) -> void:
 		external_force -= position.normalized() * (35 + maxf(0, position.length() - 185) * 8)
 	gravity_velocity = gravity_velocity * exp(-delta * 1.8) + external_force * delta
 	external_force = Vector3.ZERO
-	# Preserve the player's commanded velocity separately from environmental drift.
 	var commanded := velocity
 	velocity += gravity_velocity
 	move_and_slide()

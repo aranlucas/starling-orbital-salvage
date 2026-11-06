@@ -22,7 +22,6 @@ func _ready() -> void:
 	fragments.position = Vector3(-100, 20, -125)
 	fragments.rotation_degrees = Vector3(10, 25, -20)
 	add_child(fragments)
-	# A handful of distant rocks anchor scale without filling the salvage volume.
 	for i in 16:
 		var rock := ModelAssets.model("asteroid_b", "asteroid")
 		rock.scale = Vector3.ONE * rng.randf_range(5, 14)

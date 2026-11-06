@@ -3,7 +3,7 @@ extends Node2D
 
 const BACKDROP := preload("res://assets/art/arena_backdrop.png")
 const FIELD := Rect2(40, 130, 1200, 606)
-const BEACON := Vector2(640, 431)
+const BEACON := SurveySpace.DOCK
 var accent := Color("78f5dd")
 var elapsed := 0.0
 var cargo := 0
@@ -27,8 +27,8 @@ func _draw() -> void:
 		draw_line(corner, corner + Vector2(0, 18 * direction.y), accent, 2)
 	var pulse := 0.0 if reduced_motion else sin(elapsed * 2) * 2
 	draw_circle(BEACON, 77, Color(accent, 0.055))
-	draw_circle(BEACON, 54, Color(accent, 0.035))
-	draw_arc(BEACON, 54 + pulse, 0, TAU, 80, Color(accent, 0.55 if cargo > 0 else 0.25), 1.4, true)
+	draw_circle(BEACON, SurveySpace.DOCK_RADIUS, Color(accent, 0.035))
+	draw_arc(BEACON, SurveySpace.DOCK_RADIUS + pulse, 0, TAU, 80, Color(accent, 0.55 if cargo > 0 else 0.25), 1.4, true)
 	for i in 4:
 		var offset := Vector2.from_angle(PI * 0.25 + i * PI / 2) * 32
 		draw_line(BEACON + offset * 0.7, BEACON + offset, Color(accent, 0.7), 3, true)
@@ -36,7 +36,6 @@ func _draw() -> void:
 		draw_arc(BEACON, 62, -PI / 2, -PI / 2 + TAU * dock_progress, 80, accent, 4, true)
 	var caption := "DOCK TO BANK %02d" % cargo if cargo > 0 else "SAFE DOCK"
 	draw_string(ThemeDB.fallback_font, BEACON + Vector2(-52, 91), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, accent)
-	# A small navigation chevron helps locate the final core or the home dock.
 	if destination != Vector2.ZERO and pilot_position.distance_to(destination) > 120:
 		var direction := pilot_position.direction_to(destination)
 		var tip := pilot_position + direction * 43
