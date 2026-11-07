@@ -527,9 +527,19 @@ func _test_card_actors() -> void:
 	var clock: float = game.time_left
 	await _physics_steps()
 	_check(not is_instance_valid(rock) and game.time_left > clock + 2.8, "Ram Plating adds 1.5 seconds per level for an actual dash-shatter")
+	# Overdrive's attracted cores must not add cargo to the banking fixture.
+	for loose in _cores():
+		game.world.remove_child(loose)
+		loose.queue_free()
 	game.run.cargo = 2
+	game.dock_progress = 0
 	game.pilot.dash_remaining = 0
 	game.pilot.position = game.BEACON
 	game.pilot.velocity = Vector2.ZERO
-	await create_timer(0.36).timeout
-	_check(game.run.cargo == 0 and game.run.banked == 2, "Ballast level two banks cargo in 0.3 seconds")
+	game.pilot.gravity_velocity = Vector2.ZERO
+	var banked_before: int = game.run.banked
+	var total_before: int = game.run.total_banked
+	await create_timer(0.15).timeout
+	_check(game.run.cargo == 2 and game.run.banked == banked_before, "Ballast does not bank before its dwell time")
+	await create_timer(0.21).timeout
+	_check(game.run.cargo == 0 and game.run.banked == banked_before + 2 and game.run.total_banked == total_before + 2, "Ballast level two banks exactly two cores after its 0.3 second dwell")

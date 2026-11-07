@@ -16,6 +16,7 @@ def check(project: Path) -> None:
         raise SystemExit("Set GODOT_BIN or put Godot on PATH.")
     for arguments in [
         ["--editor", "--quit"],
+        ["--script", "tests/profile_reliability_test.gd"],
         ["--script", "tests/smoke_test.gd"],
         ["--script", "tests/flight3d_test.gd"],
     ]:
